@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>環境マーカー設定</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        
+        body {
+            width: 360px;
+            padding: 0;
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 0;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 24px 20px;
+            text-align: center;
+            color: white;
+        }
+        
+        .header h2 {
+            margin: 0;
+            font-size: 20px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+        
+        .header p {
+            margin: 6px 0 0 0;
+            font-size: 12px;
+            opacity: 0.9;
+        }
+        
+        .content {
+            padding: 24px 20px;
+        }
+        
+        .setting-group {
+            margin-bottom: 24px;
+            padding-bottom: 24px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        .setting-group:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+        
+        .section-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: #667eea;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 16px;
+        }
+        
+        .toggle-wrapper {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 16px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            transition: all 0.3s ease;
+        }
+        
+        .toggle-wrapper:hover {
+            background: #e9ecef;
+        }
+        
+        .toggle-label {
+            font-size: 14px;
+            font-weight: 500;
+            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .toggle-label::before {
+            content: "👁️";
+            font-size: 18px;
+        }
+        
+        /* カスタムトグルスイッチ */
+        .toggle-switch {
+            position: relative;
+            width: 48px;
+            height: 26px;
+        }
+        
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: 0.3s;
+            border-radius: 26px;
+        }
+        
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 20px;
+            width: 20px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: 0.3s;
+            border-radius: 50%;
+        }
+        
+        input:checked + .slider {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        input:checked + .slider:before {
+            transform: translateX(22px);
+        }
+        
+        .height-control {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+        
+        .height-icon {
+            font-size: 20px;
+        }
+        
+        .height-input-wrapper {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        input[type="number"] {
+            flex: 1;
+            padding: 8px 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        
+        input[type="number"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .unit {
+            font-size: 13px;
+            color: #666;
+            font-weight: 500;
+        }
+        
+        .env-grid {
+            display: grid;
+            gap: 12px;
+        }
+        
+        .env-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 16px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .env-item:hover {
+            background: #e9ecef;
+            transform: translateX(4px);
+        }
+        
+        .env-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .env-badge {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        }
+        
+        .env-name {
+            font-size: 14px;
+            font-weight: 500;
+            color: #333;
+        }
+        
+        input[type="color"] {
+            width: 48px;
+            height: 32px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        input[type="color"]:hover {
+            border-color: #667eea;
+            transform: scale(1.05);
+        }
+        
+        .button-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-top: 24px;
+        }
+        
+        button {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .save-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        .save-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+        }
+        
+        .save-btn:active {
+            transform: translateY(0);
+        }
+        
+        .reset-btn {
+            background: white;
+            color: #667eea;
+            border: 2px solid #667eea;
+        }
+        
+        .reset-btn:hover {
+            background: #667eea;
+            color: white;
+            transform: translateY(-2px);
+        }
+        
+        .reset-btn:active {
+            transform: translateY(0);
+        }
+        
+        .status {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-100px);
+            padding: 12px 24px;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 500;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            z-index: 1000;
+            opacity: 0;
+        }
+        
+        .status.success {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h2>環境マーカー設定</h2>
+            <p>Web Environment Marker</p>
+        </div>
+        
+        <div class="content">
+            <div class="setting-group">
+                <div class="section-title">表示設定</div>
+                <div class="toggle-wrapper">
+                    <div class="toggle-label">環境マーカーを表示</div>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="enableMarker" checked>
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="setting-group">
+                <div class="section-title">バナー設定</div>
+                <div class="height-control">
+                    <span class="height-icon">📏</span>
+                    <div class="height-input-wrapper">
+                        <input type="number" id="bannerHeight" min="20" max="100" value="30">
+                        <span class="unit">px</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="setting-group">
+                <div class="section-title">環境カラー</div>
+                <div class="env-grid">
+                    <div class="env-item">
+                        <div class="env-info">
+                            <div class="env-badge" id="devBadge" style="background-color: #28a745;"></div>
+                            <div class="env-name">開発環境</div>
+                        </div>
+                        <input type="color" id="devColor" value="#28a745">
+                    </div>
+
+                    <div class="env-item">
+                        <div class="env-info">
+                            <div class="env-badge" id="stgBadge" style="background-color: #007bff;"></div>
+                            <div class="env-name">STG環境</div>
+                        </div>
+                        <input type="color" id="stgColor" value="#007bff">
+                    </div>
+
+                    <div class="env-item">
+                        <div class="env-info">
+                            <div class="env-badge" id="prodBadge" style="background-color: #ff0000;"></div>
+                            <div class="env-name">本番環境</div>
+                        </div>
+                        <input type="color" id="prodColor" value="#ff0000">
+                    </div>
+
+                    <div class="env-item">
+                        <div class="env-info">
+                            <div class="env-badge" id="unknownBadge" style="background-color: #6c757d;"></div>
+                            <div class="env-name">環境不明</div>
+                        </div>
+                        <input type="color" id="unknownColor" value="#6c757d">
+                    </div>
+                </div>
+            </div>
+
+            <div class="button-group">
+                <button class="save-btn" id="saveBtn">💾 保存</button>
+                <button class="reset-btn" id="resetBtn">🔄 リセット</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="status" id="status">✓ 設定を保存しました</div>
+
+    <script src="popup.js"></script>
+</body>
+</html>

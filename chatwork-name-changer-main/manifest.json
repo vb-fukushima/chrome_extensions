@@ -1,0 +1,33 @@
+{
+  "manifest_version": 3,
+  "name": "Chatwork Name Changer",
+  "version": "2.0",
+  "description": "Chatworkの表示名を一時的に変更",
+  "permissions": [
+    "storage",
+    "alarms",
+    "scripting"
+  ],
+  "host_permissions": [
+    "https://www.chatwork.com/*"
+  ],
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://www.chatwork.com/*"],
+      "js": ["content.js"],
+      "run_at": "document_end"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["page-script.js"],
+      "matches": ["https://www.chatwork.com/*"]
+    }
+  ]
+}

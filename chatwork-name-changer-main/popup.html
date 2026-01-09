@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            width: 320px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+        }
+
+        .container {
+            background: white;
+            border-radius: 12px;
+            margin: 16px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        h2 {
+            font-size: 18px;
+            font-weight: 600;
+            color: #667eea;
+            margin-bottom: 16px;
+            text-align: center;
+        }
+
+        .input-group { margin-bottom: 16px; }
+
+        label {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 13px;
+            font-weight: 500;
+            color: #555;
+        }
+
+        input[type="text"], input[type="number"] {
+            width: 100%;
+            padding: 10px 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        input[type="text"]:focus, input[type="number"]:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .preview {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 16px;
+            min-height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .preview-text {
+            font-size: 15px;
+            font-weight: 500;
+            color: #333;
+            text-align: center;
+        }
+
+        .preview-empty {
+            font-size: 13px;
+            color: #999;
+            font-style: italic;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 10px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        button:active { transform: translateY(0); }
+
+        #changeButton {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        #changeButton:hover {
+            background: linear-gradient(135deg, #5568d3 0%, #63408a 100%);
+        }
+
+        #restoreButton {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+        }
+        #restoreButton:hover {
+            background: linear-gradient(135deg, #d67ee0 0%, #dc4456 100%);
+        }
+
+        /* 追加：一般的な disabled 表示（changeButtonにも効く） */
+        button:disabled {
+            background: #e0e0e0 !important;
+            color: #999 !important;
+            cursor: not-allowed !important;
+            transform: none !important;
+            box-shadow: none !important;
+        }
+
+        #status {
+            padding: 10px;
+            border-radius: 8px;
+            text-align: center;
+            font-size: 13px;
+            font-weight: 500;
+            margin-top: 12px;
+        }
+
+        #status.changed {
+            background: linear-gradient(135deg, #ffeaa7 0%, #fdcb6e 100%);
+            color: #2d3436;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        #status.warning {
+            background: linear-gradient(135deg, #ffe5e5 0%, #ffd1d1 100%);
+            color: #6b0000;
+            display: block;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.8; }
+        }
+
+        .time-input-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .time-input-wrapper input { flex: 1; }
+
+        .time-unit {
+            font-size: 13px;
+            color: #666;
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h2>⚡ Chatwork Name Changer</h2>
+
+    <div class="preview">
+        <div id="preview" class="preview-text preview-empty">プレビュー</div>
+    </div>
+
+    <!-- ★URL保存UI（手入力保存ボタンを追加） -->
+    <div class="input-group">
+        <label for="chatworkUrl">🔗 ChatworkページURL（保存用）</label>
+        <input type="text" id="chatworkUrl" placeholder="例: https://www.chatwork.com/..." />
+        <button id="saveUrlButton" type="button">入力したURLを保存</button>
+        <button id="saveCurrentUrlButton" type="button">今開いているChatworkのURLを保存</button>
+    </div>
+
+    <div class="input-group">
+        <label for="suffix">📝 追加する文言</label>
+        <input type="text" id="suffix" placeholder="例: 🍴ランチ中">
+    </div>
+
+    <div class="input-group">
+        <label for="minutes">⏰ 自動復帰時間</label>
+        <div class="time-input-wrapper">
+            <input type="number" id="minutes" value="60" min="1" max="480">
+            <span class="time-unit">分後</span>
+        </div>
+    </div>
+
+    <button id="changeButton">名前を変更</button>
+    <button id="restoreButton">今すぐ戻す</button>
+
+    <div id="status" style="display: none;"></div>
+</div>
+
+<script src="popup.js"></script>
+</body>
+</html>

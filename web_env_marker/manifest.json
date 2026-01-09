@@ -1,0 +1,28 @@
+{
+  "manifest_version": 3,
+  "name": "Web Environment Marker",
+  "version": "1.0",
+  "description": "特定のサイトに環境ラベルを表示し、作業ミスを防ぎます。",
+  "permissions": [
+    "storage",
+    "tabs"
+  ],
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.ben54.jp/*",
+        "https://admin.ben54.jp/*",
+        "https://ww9.ben54.jp/*",
+        "https://admin9.ben54.jp/*",
+        "http://localhost/*",
+        "http://127.0.0.1/*"
+      ],
+      "js": ["content.js"],
+      "css": ["style.css"],
+      "run_at": "document_idle"
+    }
+  ]
+}

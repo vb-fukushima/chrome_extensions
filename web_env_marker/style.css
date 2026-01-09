@@ -1,0 +1,18 @@
+#chrome-env-marker {
+    /* 固定表示の設定 */
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+
+    /* 色と高さはJavaScriptから動的に設定されます */
+
+    /* その他のスタイル設定 */
+    color: white;
+    text-align: center;
+    font-size: 16px;
+    font-weight: bold;
+    z-index: 99999;
+    pointer-events: none;
+    opacity: 0.9;
+}

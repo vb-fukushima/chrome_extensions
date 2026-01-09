@@ -1,0 +1,13 @@
+{
+  "manifest_version": 3,
+  "name": "Quick iPhone Switcher",
+  "version": "1.0",
+  "permissions": ["declarativeNetRequest", "storage"],
+  "host_permissions": ["<all_urls>"],
+  "action": {
+    "default_title": "Switch to iPhone"
+  },
+  "background": {
+    "service_worker": "background.js"
+  }
+}
