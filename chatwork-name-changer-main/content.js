@@ -26,12 +26,12 @@ function getAccessCredentials() {
         resolve({ accessToken: null, myId: null });
       }
     };
-    
+
     // データ要求を送信
     const requestElement = document.createElement('div');
     requestElement.id = 'chatwork-credentials-request';
     document.body.appendChild(requestElement);
-    
+
     // 少し待ってからデータを取得
     setTimeout(handleMessage, 50);
   });
@@ -51,17 +51,17 @@ function waitForChatworkReady(timeout = 10000) {
   return new Promise((resolve, reject) => {
     const startTime = Date.now();
     let attemptCount = 0;
-    
+
     console.log('Chatwork準備確認を開始...');
-    
+
     const checkReady = async () => {
       attemptCount++;
-      
+
       // ページコンテキストから認証情報を取得
       const credentials = await getAccessCredentials();
       const hasToken = !!credentials.accessToken;
       const hasId = !!credentials.myId;
-      
+
       if (attemptCount % 10 === 0) {
         console.log(`確認中... (${attemptCount}回目)`, {
           ACCESS_TOKEN: hasToken ? '存在' : '未取得',
@@ -69,10 +69,10 @@ function waitForChatworkReady(timeout = 10000) {
           経過時間: `${Date.now() - startTime}ms`
         });
       }
-      
+
       if (hasToken && hasId) {
-        console.log('✅ Chatwork準備完了:', { 
-          ACCESS_TOKEN: credentials.accessToken.substring(0, 20) + '...', 
+        console.log('✅ Chatwork準備完了:', {
+          ACCESS_TOKEN: credentials.accessToken.substring(0, 20) + '...',
           MYID: credentials.myId,
           確認回数: attemptCount
         });
@@ -90,7 +90,7 @@ function waitForChatworkReady(timeout = 10000) {
         setTimeout(checkReady, 100);
       }
     };
-    
+
     checkReady();
   });
 }
@@ -111,45 +111,58 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       .catch(error => sendResponse({ success: false, error: error.message }));
     return true;
   } else if (request.action === 'getCurrentName') {
-    try {
-      const currentName = getCurrentDisplayName();
-      sendResponse({ success: true, name: currentName });
-    } catch (error) {
-      sendResponse({ success: false, error: error.message });
-    }
+    getCurrentDisplayName()
+      .then(name => sendResponse({ success: true, name: name }))
+      .catch(error => sendResponse({ success: false, error: error.message }));
+    return true;
+  } else if (request.action === 'updateFullName') {
+    waitForChatworkReady()
+      .then((credentials) => changeNameAPI(request.fullName, credentials))
+      .then(result => sendResponse({ success: true }))
+      .catch(error => sendResponse({ success: false, error: error.message }));
     return true;
   }
 });
 
-// 現在の表示名を取得
-function getCurrentDisplayName() {
-  const nameElement = document.querySelector('.sc-kxZkPw.eDPshW');
-  if (!nameElement) {
-    throw new Error('名前要素が見つかりません');
+// 現在の表示名を取得（表示されるまで待機）
+async function getCurrentDisplayName() {
+  const selector = '.sc-kxZkPw.eDPshW';
+  const timeout = 10000; // 最大10秒待機
+  const start = Date.now();
+
+  while (Date.now() - start < timeout) {
+    const nameElement = document.querySelector(selector);
+    const name = nameElement ? nameElement.textContent.trim() : '';
+    if (name) {
+      return name;
+    }
+    // 少し待ってから再試行
+    await new Promise(resolve => setTimeout(resolve, 500));
   }
-  return nameElement.textContent.trim();
+
+  throw new Error('名前要素が見つかりません。Chatworkが正しく読み込まれているか確認してください。');
 }
 
 // 名前変更API呼び出し
 async function changeNameAPI(newName, credentials) {
   const accessToken = credentials.accessToken;
   const myId = credentials.myId;
-  
+
   if (!accessToken || !myId) {
     console.error('認証情報が取得できません:', credentials);
     throw new Error('認証情報が取得できません。ページを再読み込みしてください。');
   }
-  
+
   console.log('API呼び出し開始:', { newName, myId });
-  
+
   const payload = {
     name: newName,
     _t: accessToken
   };
-  
+
   const formData = new URLSearchParams();
   formData.append('pdata', JSON.stringify(payload));
-  
+
   const response = await fetch(
     `https://www.chatwork.com/gateway/send_profile_setting.php?myid=${myId}&_v=1.80a&_av=5&ln=ja`,
     {
@@ -160,37 +173,37 @@ async function changeNameAPI(newName, credentials) {
       body: formData
     }
   );
-  
+
   const data = await response.json();
   console.log('API応答:', data);
-  
+
   if (!data.status || !data.status.success) {
     throw new Error(data.status?.message || 'API呼び出しに失敗しました');
   }
-  
+
   return data;
 }
 
 // 名前を変更
 async function changeName(suffix, credentials) {
   try {
-    // 現在の表示名を取得
-    const currentName = getCurrentDisplayName();
-    
+    // 現在の表示名を取得（待機あり）
+    const currentName = await getCurrentDisplayName();
+
     // 元の名前が保存されていない場合のみ保存
     const stored = await chrome.storage.local.get(['originalName']);
     if (!stored.originalName) {
       await chrome.storage.local.set({ originalName: currentName });
       console.log('元の名前を保存しました:', currentName);
     }
-    
+
     // 新しい名前を作成（元の名前 + suffix）
     const originalName = stored.originalName || currentName;
     const newName = `${originalName}　${suffix}`;
-    
+
     // API呼び出しで名前変更
     await changeNameAPI(newName, credentials);
-    
+
     console.log('名前を変更しました:', newName);
     return { success: true };
   } catch (error) {
@@ -207,10 +220,10 @@ async function restoreName(credentials) {
     if (!stored.originalName) {
       throw new Error('元の名前が保存されていません');
     }
-    
+
     // API呼び出しで名前を元に戻す
     await changeNameAPI(stored.originalName, credentials);
-    
+
     console.log('名前を復元しました:', stored.originalName);
     return { success: true };
   } catch (error) {
