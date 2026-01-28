@@ -126,10 +126,21 @@ function updatePreview(data) {
     });
 });
 
-// URL入力が変わったら保存状態を再判定（まだ保存してないなら無効のまま）
+// URL入力が変わったら保存状態を再判定
 chatworkUrlInput.addEventListener('input', () => {
     // 入力しただけでは保存扱いにしない（= 必ず保存ボタンを押す）
     refreshUrlState();
+});
+
+// ★設定保存リスナー
+lunchSuffixInput.addEventListener('input', () => {
+    chrome.storage.local.set({ lunchPresetSuffix: lunchSuffixInput.value });
+});
+lunchDurationInput.addEventListener('input', () => {
+    chrome.storage.local.set({ lunchPresetDuration: lunchDurationInput.value });
+});
+vacationSuffixInput.addEventListener('input', () => {
+    chrome.storage.local.set({ vacationPresetSuffix: vacationSuffixInput.value });
 });
 
 // ----------------------------
@@ -339,7 +350,10 @@ saveUrlButton.addEventListener('click', async () => {
         await chrome.storage.local.set({ chatworkUrl: normalized });
         chatworkUrlInput.value = normalized;
 
-        await refreshUrlState();
+        // ★ 保存直後にUIを即座に更新（タブチェック等を含む）
+        const updatedData = await chrome.storage.local.get(['isChanged', 'originalName', 'chatworkUrl', 'lunchState', 'vacationState']);
+        updateUI(updatedData);
+
         alert('ChatworkページURLを保存しました');
     } catch (e) {
         alert('保存に失敗しました: ' + e.message);
@@ -357,7 +371,15 @@ const tzoffset = (new Date()).getTimezoneOffset() * 60000; // タイムゾーン
 const localISOTime = (new Date(tomorrow - tzoffset)).toISOString().slice(0, 16);
 vacationUntilInput.value = localISOTime;
 
-chrome.storage.local.get(['isChanged', 'originalName', 'chatworkUrl', 'lunchState', 'vacationState'], async (data) => {
+chrome.storage.local.get([
+    'isChanged', 'originalName', 'chatworkUrl', 'lunchState', 'vacationState',
+    'lunchPresetSuffix', 'lunchPresetDuration', 'vacationPresetSuffix'
+], async (data) => {
+    // プリセット復元
+    if (data.lunchPresetSuffix !== undefined) lunchSuffixInput.value = data.lunchPresetSuffix;
+    if (data.lunchPresetDuration !== undefined) lunchDurationInput.value = data.lunchPresetDuration;
+    if (data.vacationPresetSuffix !== undefined) vacationSuffixInput.value = data.vacationPresetSuffix;
+
     // URL復元
     if (data.chatworkUrl) chatworkUrlInput.value = data.chatworkUrl;
 
