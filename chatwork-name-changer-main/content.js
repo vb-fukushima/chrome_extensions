@@ -1,24 +1,88 @@
-// Content script読み込み確認
-console.log('🔧 Chatwork Name Changer content script loaded');
+/**
+ * Chatwork Name Changer - Content Script
+ */
 
-// ページコンテキストで実行するスクリプトをファイルとして注入
+// ページコンテキストへ認証情報取得用のスクリプトを注入
 function injectPageScript() {
+  if (document.getElementById('chatwork-name-changer-injected')) return;
+  const marker = document.createElement('div');
+  marker.id = 'chatwork-name-changer-injected';
+  marker.style.display = 'none';
+  document.body.appendChild(marker);
+
   const script = document.createElement('script');
   script.src = chrome.runtime.getURL('page-script.js');
   (document.head || document.documentElement).appendChild(script);
   script.onload = () => script.remove();
 }
 
-// ページコンテキストからデータを取得する関数
+injectPageScript();
+
+// メッセージハンドラー
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.action === 'getCurrentName') {
+    getCurrentDisplayName()
+      .then(name => sendResponse({ success: true, name: name }))
+      .catch(error => {
+        console.error('Name acquisition error:', error);
+        sendResponse({ success: false, error: error.message });
+      });
+    return true;
+  } else if (request.action === 'updateFullName') {
+    waitForChatworkReady()
+      .then((credentials) => changeNameAPI(request.fullName, credentials))
+      .then(() => sendResponse({ success: true }))
+      .catch(error => sendResponse({ success: false, error: error.message }));
+    return true;
+  }
+});
+
+/**
+ * 現在の表示名を取得する
+ */
+async function getCurrentDisplayName() {
+  // 1. data-testid 構造から取得（最新のReact版で最も確実）
+  const menuButton = document.querySelector('[data-testid="global-header_account-menu_menu-button"]');
+  if (menuButton) {
+    const children = menuButton.children;
+    for (let child of children) {
+      if (child.tagName === 'DIV' && child.textContent.trim().length > 0) {
+        const name = child.textContent.trim();
+        if (name && !name.includes('icon_')) {
+          return name;
+        }
+      }
+    }
+  }
+
+  // 2. フォールバック: プロフィールボタンの aria-label
+  const profileButton = document.querySelector('button[aria-label*="プロフィール"]');
+  if (profileButton) {
+    const label = profileButton.getAttribute('aria-label');
+    const match = label.match(/プロフィール: (.*)/);
+    if (match && match[1]) return match[1].trim();
+  }
+
+  // 3. フォールバック: マイチャット要素
+  const myChat = document.querySelector('#my-chat-sidebar-item .roomName');
+  if (myChat && myChat.textContent) {
+    return myChat.textContent.trim();
+  }
+
+  throw new Error('名前の取得に失敗しました。Chatworkのページが正しく表示されているか確認してください。');
+}
+
+/**
+ * ページコンテキスト（window）から認証情報を取得する
+ */
 function getAccessCredentials() {
   return new Promise((resolve) => {
-    // DOM要素経由でデータを受け取る
     const handleMessage = () => {
       const element = document.getElementById('chatwork-credentials');
-      if (element && element.dataset.accessToken && element.dataset.myId) {
+      if (element) {
         const data = {
           accessToken: element.dataset.accessToken,
-          myId: parseInt(element.dataset.myId)
+          myId: element.dataset.myId
         };
         element.remove();
         resolve(data);
@@ -27,139 +91,21 @@ function getAccessCredentials() {
       }
     };
 
-    // データ要求を送信
-    const requestElement = document.createElement('div');
-    requestElement.id = 'chatwork-credentials-request';
-    document.body.appendChild(requestElement);
-
-    // 少し待ってからデータを取得
-    setTimeout(handleMessage, 50);
+    const req = document.createElement('div');
+    req.id = 'chatwork-credentials-request';
+    document.body.appendChild(req);
+    setTimeout(handleMessage, 150);
   });
 }
 
-// ページスクリプトを注入（初回のみ）
-if (!document.getElementById('chatwork-name-changer-injected')) {
-  const marker = document.createElement('div');
-  marker.id = 'chatwork-name-changer-injected';
-  marker.style.display = 'none';
-  document.body.appendChild(marker);
-  injectPageScript();
-}
-
-// Chatworkの準備が完了するまで待つ
-function waitForChatworkReady(timeout = 10000) {
-  return new Promise((resolve, reject) => {
-    const startTime = Date.now();
-    let attemptCount = 0;
-
-    console.log('Chatwork準備確認を開始...');
-
-    const checkReady = async () => {
-      attemptCount++;
-
-      // ページコンテキストから認証情報を取得
-      const credentials = await getAccessCredentials();
-      const hasToken = !!credentials.accessToken;
-      const hasId = !!credentials.myId;
-
-      if (attemptCount % 10 === 0) {
-        console.log(`確認中... (${attemptCount}回目)`, {
-          ACCESS_TOKEN: hasToken ? '存在' : '未取得',
-          MYID: hasId ? credentials.myId : '未取得',
-          経過時間: `${Date.now() - startTime}ms`
-        });
-      }
-
-      if (hasToken && hasId) {
-        console.log('✅ Chatwork準備完了:', {
-          ACCESS_TOKEN: credentials.accessToken.substring(0, 20) + '...',
-          MYID: credentials.myId,
-          確認回数: attemptCount
-        });
-        resolve(credentials);
-      } else if (Date.now() - startTime > timeout) {
-        console.error('❌ タイムアウト:', {
-          ACCESS_TOKEN: hasToken ? '取得済み' : '未取得',
-          MYID: hasId ? credentials.myId : '未取得',
-          経過時間: `${Date.now() - startTime}ms`,
-          確認回数: attemptCount,
-          URL: location.href
-        });
-        reject(new Error('Chatworkの読み込みがタイムアウトしました。ページを再読み込みしてください。'));
-      } else {
-        setTimeout(checkReady, 100);
-      }
-    };
-
-    checkReady();
-  });
-}
-
-// メッセージリスナー
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  if (request.action === 'changeName') {
-    // まずChatworkの準備を待つ（認証情報を取得）
-    waitForChatworkReady()
-      .then((credentials) => changeName(request.suffix, credentials))
-      .then(result => sendResponse(result))
-      .catch(error => sendResponse({ success: false, error: error.message }));
-    return true; // 非同期レスポンスのため
-  } else if (request.action === 'restoreName') {
-    waitForChatworkReady()
-      .then((credentials) => restoreName(credentials))
-      .then(result => sendResponse(result))
-      .catch(error => sendResponse({ success: false, error: error.message }));
-    return true;
-  } else if (request.action === 'getCurrentName') {
-    getCurrentDisplayName()
-      .then(name => sendResponse({ success: true, name: name }))
-      .catch(error => sendResponse({ success: false, error: error.message }));
-    return true;
-  } else if (request.action === 'updateFullName') {
-    waitForChatworkReady()
-      .then((credentials) => changeNameAPI(request.fullName, credentials))
-      .then(result => sendResponse({ success: true }))
-      .catch(error => sendResponse({ success: false, error: error.message }));
-    return true;
-  }
-});
-
-// 現在の表示名を取得（表示されるまで待機）
-async function getCurrentDisplayName() {
-  const selector = '.sc-kxZkPw.eDPshW';
-  const timeout = 10000; // 最大10秒待機
-  const start = Date.now();
-
-  while (Date.now() - start < timeout) {
-    const nameElement = document.querySelector(selector);
-    const name = nameElement ? nameElement.textContent.trim() : '';
-    if (name) {
-      return name;
-    }
-    // 少し待ってから再試行
-    await new Promise(resolve => setTimeout(resolve, 500));
-  }
-
-  throw new Error('名前要素が見つかりません。Chatworkが正しく読み込まれているか確認してください。');
-}
-
-// 名前変更API呼び出し
+/**
+ * 名前変更APIを実行
+ */
 async function changeNameAPI(newName, credentials) {
-  const accessToken = credentials.accessToken;
-  const myId = credentials.myId;
+  const { accessToken, myId } = credentials;
+  if (!accessToken || !myId) throw new Error('認証情報を取得できませんでした。');
 
-  if (!accessToken || !myId) {
-    console.error('認証情報が取得できません:', credentials);
-    throw new Error('認証情報が取得できません。ページを再読み込みしてください。');
-  }
-
-  console.log('API呼び出し開始:', { newName, myId });
-
-  const payload = {
-    name: newName,
-    _t: accessToken
-  };
-
+  const payload = { name: newName, _t: accessToken };
   const formData = new URLSearchParams();
   formData.append('pdata', JSON.stringify(payload));
 
@@ -167,67 +113,26 @@ async function changeNameAPI(newName, credentials) {
     `https://www.chatwork.com/gateway/send_profile_setting.php?myid=${myId}&_v=1.80a&_av=5&ln=ja`,
     {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded'
-      },
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: formData
     }
   );
 
-  const data = await response.json();
-  console.log('API応答:', data);
-
-  if (!data.status || !data.status.success) {
-    throw new Error(data.status?.message || 'API呼び出しに失敗しました');
-  }
-
-  return data;
+  return await response.json();
 }
 
-// 名前を変更
-async function changeName(suffix, credentials) {
-  try {
-    // 現在の表示名を取得（待機あり）
-    const currentName = await getCurrentDisplayName();
-
-    // 元の名前が保存されていない場合のみ保存
-    const stored = await chrome.storage.local.get(['originalName']);
-    if (!stored.originalName) {
-      await chrome.storage.local.set({ originalName: currentName });
-      console.log('元の名前を保存しました:', currentName);
-    }
-
-    // 新しい名前を作成（元の名前 + suffix）
-    const originalName = stored.originalName || currentName;
-    const newName = `${originalName}　${suffix}`;
-
-    // API呼び出しで名前変更
-    await changeNameAPI(newName, credentials);
-
-    console.log('名前を変更しました:', newName);
-    return { success: true };
-  } catch (error) {
-    console.error('名前変更エラー:', error);
-    return { success: false, error: error.message };
-  }
-}
-
-// 名前を復元
-async function restoreName(credentials) {
-  try {
-    // 保存された元の名前を取得
-    const stored = await chrome.storage.local.get(['originalName']);
-    if (!stored.originalName) {
-      throw new Error('元の名前が保存されていません');
-    }
-
-    // API呼び出しで名前を元に戻す
-    await changeNameAPI(stored.originalName, credentials);
-
-    console.log('名前を復元しました:', stored.originalName);
-    return { success: true };
-  } catch (error) {
-    console.error('名前復元エラー:', error);
-    return { success: false, error: error.message };
-  }
+/**
+ * API実行の準備が整うまで待機
+ */
+function waitForChatworkReady(timeout = 10000) {
+  return new Promise((resolve, reject) => {
+    const start = Date.now();
+    const check = async () => {
+      const creds = await getAccessCredentials();
+      if (creds.accessToken && creds.myId) resolve(creds);
+      else if (Date.now() - start > timeout) reject(new Error('タイムアウト：Chatworkの準備が整いませんでした。'));
+      else setTimeout(check, 500);
+    };
+    check();
+  });
 }

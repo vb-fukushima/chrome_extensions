@@ -63,6 +63,32 @@
             </div>
 
             <button id="restoreButton" style="margin-top: 16px;">すべての設定を解除</button>
+
+            <!-- メンテナンス/強制操作セクション -->
+            <div class="preset-section maintenance-section">
+                <h3 class="maintenance-title">🛠 名前の修正・リセット</h3>
+                <p class="help-text" style="color: #666; margin-bottom: 12px;">「名前が戻らない」「元の名前が違う」などのトラブル時に使用します。</p>
+
+                <div class="input-group" style="margin-bottom: 12px;">
+                    <label for="forceName">あなたの正しい名前（元の名前）</label>
+                    <div class="input-with-button">
+                        <input type="text" id="forceName" placeholder="例: 福島勇人">
+                        <button id="getCurrentNameButton" type="button"
+                            class="secondary-button side-button">現在名を取得</button>
+                    </div>
+                </div>
+
+                <div class="maintenance-actions">
+                    <button id="forceChangeButton" class="preset-button warning-button force-reset-btn">
+                        名前を強制リセット
+                        <span class="btn-subtext">Chatworkの名前に上書きし、全タイマーを解除します</span>
+                    </button>
+
+                    <button id="forceSaveCurrentNameButton" class="text-link-button">
+                        名前の保存（記憶）だけ更新する
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
 

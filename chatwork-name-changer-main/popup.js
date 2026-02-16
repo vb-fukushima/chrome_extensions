@@ -12,6 +12,10 @@ const previewDiv = document.getElementById('preview');
 const openContainer = document.getElementById('openContainer');
 const settingsContainer = document.getElementById('settingsContainer');
 const openChatworkButton = document.getElementById('openChatworkButton');
+const forceNameInput = document.getElementById('forceName');
+const getCurrentNameButton = document.getElementById('getCurrentNameButton');
+const forceChangeButton = document.getElementById('forceChangeButton');
+const forceSaveCurrentNameButton = document.getElementById('forceSaveCurrentNameButton');
 
 // URL保存UI
 const chatworkUrlInput = document.getElementById('chatworkUrl');
@@ -383,6 +387,9 @@ chrome.storage.local.get([
     // URL復元
     if (data.chatworkUrl) chatworkUrlInput.value = data.chatworkUrl;
 
+    // 強制変更用の入力欄に初期値をセット
+    if (data.originalName) forceNameInput.value = data.originalName;
+
     // URL状態に応じてボタン制御（最優先）
     updateUI(data);
 
@@ -588,4 +595,86 @@ restoreButton.addEventListener('click', async () => {
     } else {
         alert('名前の復元に失敗しました');
     }
+});
+
+// ----------------------------
+// メンテナンス / 強制操作
+// ----------------------------
+
+// この名前に強制変更
+forceChangeButton.addEventListener('click', async () => {
+    const newName = forceNameInput.value.trim();
+    if (!newName) {
+        alert('名前を入力してください');
+        return;
+    }
+
+    if (!confirm(`名前を強制的に「${newName}」に変更し、これを初期の名前として保存しますか？\n（現在のランチ/有給の設定も解除されます）`)) {
+        return;
+    }
+
+    // すべての状態をクリア
+    chrome.alarms.clearAll();
+    await chrome.storage.local.set({
+        lunchState: null,
+        vacationState: null,
+        isChanged: false,
+        originalName: newName
+    });
+
+    let tab;
+    try {
+        tab = await openOrFocusChatworkTab();
+    } catch (e) {
+        alert(e.message);
+        return;
+    }
+
+    const response = await sendMessageSafely(tab.id, { action: 'updateFullName', fullName: newName });
+
+    if (response && response.success) {
+        chrome.tabs.update(tab.id, { active: true });
+        // UI更新
+        const updatedData = await chrome.storage.local.get(['chatworkUrl', 'lunchState', 'vacationState', 'originalName']);
+        updateUI(updatedData);
+        alert('名前を強制更新し、初期の名前として保存しました。');
+    } else {
+        alert('名前の更新に失敗しました: ' + (response?.error || '不明なエラー'));
+    }
+});
+
+// チャットワークから現在の名前を取得して入力欄に入れる
+getCurrentNameButton.addEventListener('click', async () => {
+    let tab;
+    try {
+        tab = await openOrFocusChatworkTab();
+    } catch (e) {
+        alert(e.message);
+        return;
+    }
+
+    const res = await sendMessageSafely(tab.id, { action: 'getCurrentName' });
+    if (res && res.success && res.name) {
+        forceNameInput.value = res.name;
+        alert(`現在の名前「${res.name}」を取得しました。`);
+    } else {
+        alert('名前の取得に失敗しました。Chatworkのページが正しく表示されているか確認してください。');
+    }
+});
+
+// 入力欄の名前を初期の名前として保存
+forceSaveCurrentNameButton.addEventListener('click', async () => {
+    const nameToSave = forceNameInput.value.trim();
+    if (!nameToSave) {
+        alert('保存する名前を入力してください');
+        return;
+    }
+
+    await chrome.storage.local.set({ originalName: nameToSave });
+
+    // プレビューも即時更新
+    const data = await chrome.storage.local.get(['originalName', 'lunchState', 'vacationState']);
+    updatePreview(data);
+
+    alert(`「${nameToSave}」を初期の名前として保存しました。`);
 });
