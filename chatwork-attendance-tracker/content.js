@@ -34,12 +34,9 @@ function findScrollContainer() {
 // ----- 過去メッセージのロード（上方向スクロール） -----
 
 /**
- * 対象月の1日よりも前のメッセージが DOM にロードされるまでスクロールアップする。
+ * 指定したタイムスタンプより前のメッセージが DOM にロードされるまでスクロールアップする。
  */
-async function scrollUntilMonthLoaded(year, month) {
-  // 対象月の1日0時（その月のメッセージが全て含まれているかの基準）
-  const targetTs = new Date(year, month - 1, 1).getTime() / 1000;
-
+async function scrollUntilMonthLoaded(targetTs) {
   const container = findScrollContainer();
   if (!container) {
     console.warn('[AttendanceTracker] スクロールコンテナが見つかりません');
@@ -52,7 +49,7 @@ async function scrollUntilMonthLoaded(year, month) {
     console.log(`[AttendanceTracker] scroll ${i + 1}: oldest=${oldestTs ? new Date(oldestTs * 1000).toLocaleDateString('ja-JP') : 'none'}`);
 
     if (oldestTs !== null && oldestTs < targetTs) {
-      console.log('[AttendanceTracker] 対象月より前のメッセージをロード済み');
+      console.log('[AttendanceTracker] 目標タイムスタンプより前のメッセージをロード済み');
       break;
     }
 
@@ -190,8 +187,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 
   if (request.action === 'getAttendance') {
-    const { year, month, myUserId } = request;
-    handleGetAttendance(year, month, myUserId)
+    const { year, month, myUserId, stopTs } = request;
+    handleGetAttendance(year, month, myUserId, stopTs)
       .then((data) => sendResponse({ success: true, data }))
       .catch((err) => {
         console.error('[AttendanceTracker]', err);
@@ -201,15 +198,16 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 });
 
-async function handleGetAttendance(year, month, myUserId) {
-  console.log('[AttendanceTracker] myUserId:', myUserId);
+async function handleGetAttendance(year, month, myUserId, stopTs) {
+  console.log('[AttendanceTracker] myUserId:', myUserId, 'stopTs:', stopTs);
 
   // 1. Chatworkのメッセージ描画を待つ
   await waitForMessages();
   console.log('[AttendanceTracker] メッセージ描画確認');
 
-  // 2. 対象月まで遡る
-  await scrollUntilMonthLoaded(year, month);
+  // 2. 対象タイムスタンプまで遡る（指定がなければ対象月1日0時）
+  const targetTs = stopTs || (new Date(year, month - 1, 1).getTime() / 1000);
+  await scrollUntilMonthLoaded(targetTs);
   await wait(800); // 最終レンダリング待ち
 
   // 3. パース & 返却

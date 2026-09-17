@@ -7,7 +7,10 @@
 </head>
 <body>
   <div id="app">
-    <h1>勤怠トラッカー</h1>
+    <div id="titleRow">
+      <h1>勤怠トラッカー</h1>
+      <button id="openTabBtn" type="button" title="別タブで開く">タブで開く</button>
+    </div>
 
     <div id="userIdSection">
       <label for="userIdInput">ChatworkユーザーID</label>
@@ -29,6 +32,21 @@
 
     <div id="status" class="hidden"></div>
 
+    <div id="summaryCard" class="summary-card hidden">
+      <div class="summary-item">
+        <span class="summary-label">営業日数</span>
+        <span class="summary-value" id="summaryWorkDays">-</span>
+      </div>
+      <div class="summary-item">
+        <span class="summary-label">残業時間合計</span>
+        <span class="summary-value" id="summaryTotalOt">-</span>
+      </div>
+      <div class="summary-item">
+        <span class="summary-label">1日平均残業</span>
+        <span class="summary-value" id="summaryAvgOt">-</span>
+      </div>
+    </div>
+
     <div id="tableWrapper" class="hidden">
       <table id="attendanceTable">
         <thead>
@@ -36,11 +54,13 @@
             <th>日付</th>
             <th>出勤</th>
             <th>退勤</th>
+            <th>勤務時間</th>
+            <th>残業時間</th>
           </tr>
         </thead>
         <tbody id="tableBody"></tbody>
       </table>
-      <p class="hint">時間をクリックするとHHMMでコピーされます</p>
+      <p class="hint">シングルクリック: コピー / <b>ダブルクリック: 時間編集</b></p>
     </div>
   </div>
   <script src="popup.js"></script>

@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>就業WEB 残業ビューア</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <div id="app">
+    <h1>残業ビューア設定</h1>
+    <p class="hint">概算残業手当の計算に使う単価です。給与改定時に更新してください。</p>
+
+    <div class="field">
+      <label for="legalRate">所定残業手当（円/分）</label>
+      <input type="number" id="legalRate" step="0.01" min="0" />
+      <span class="field-hint">デフォルト: 44.59（20,200円 ÷ 7時間33分）</span>
+    </div>
+
+    <div class="field">
+      <label for="normalRate">普通残業手当（円/分）</label>
+      <input type="number" id="normalRate" step="0.01" min="0" />
+      <span class="field-hint">デフォルト: 41.94（33,844円 ÷ 13時間27分）</span>
+    </div>
+
+    <div class="field">
+      <label for="adjustment">業務手当調整（円）</label>
+      <input type="number" id="adjustment" step="1" min="0" />
+      <span class="field-hint">みなし20時間分の相殺額。デフォルト: 45,400</span>
+    </div>
+
+    <div class="actions">
+      <button id="saveBtn">保存</button>
+      <button id="resetBtn" type="button">デフォルトに戻す</button>
+    </div>
+
+    <p id="status" class="status hidden"></p>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>

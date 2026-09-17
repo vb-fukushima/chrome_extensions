@@ -1,0 +1,97 @@
+#shugyo-ot-banner {
+  margin: 8px 0 12px;
+  padding: 10px 14px;
+  background: #f0f4f8;
+  border: 1px solid #b0c4de;
+  border-radius: 4px;
+  font-family: "メイリオ", Meiryo, sans-serif;
+  font-size: 13px;
+  color: #333;
+  line-height: 1.6;
+}
+
+#shugyo-ot-banner .ot-main {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+
+#shugyo-ot-banner .ot-label {
+  font-weight: bold;
+  color: #1a3a5c;
+}
+
+#shugyo-ot-banner .ot-times {
+  font-size: 14px;
+}
+
+#shugyo-ot-banner .ot-times strong {
+  color: #1a3a5c;
+}
+
+#shugyo-ot-banner .ot-times strong.ot-total-over {
+  color: #c62828;
+}
+
+#shugyo-ot-banner .ot-over-badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 6px;
+  font-size: 11px;
+  font-weight: bold;
+  color: #fff;
+  background: #c62828;
+  border-radius: 3px;
+  vertical-align: middle;
+}
+
+#shugyo-ot-banner .ot-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 8px;
+}
+
+#shugyo-ot-banner button {
+  padding: 3px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  background: #fff;
+  border: 1px solid #999;
+  border-radius: 3px;
+  color: #444;
+}
+
+#shugyo-ot-banner button:hover {
+  background: #e8eef4;
+}
+
+#shugyo-ot-banner button.ot-money-btn {
+  color: #666;
+  border-color: #bbb;
+}
+
+#shugyo-ot-banner .ot-details {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed #ccc;
+  font-size: 12px;
+  color: #555;
+}
+
+#shugyo-ot-banner .ot-details-row {
+  padding: 1px 0;
+}
+
+#shugyo-ot-banner .ot-money {
+  margin-top: 8px;
+  padding: 8px 10px;
+  background: #fff8e1;
+  border: 1px solid #ffe082;
+  border-radius: 3px;
+  font-size: 13px;
+}
+
+#shugyo-ot-banner .ot-money strong {
+  color: #e65100;
+}

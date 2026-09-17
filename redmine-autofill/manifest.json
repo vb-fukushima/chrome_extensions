@@ -1,0 +1,13 @@
+{
+  "manifest_version": 3,
+  "name": "Redmine チケット自動入力",
+  "version": "1.0",
+  "description": "弁護士JP Redmineの新規チケット作成画面で、担当者・期日・所属を一発入力するボタンを追加します。",
+  "content_scripts": [
+    {
+      "matches": ["https://redmine.vbest.co.jp/projects/*/issues/new*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

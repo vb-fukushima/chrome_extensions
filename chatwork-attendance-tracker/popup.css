@@ -9,16 +9,34 @@ body {
   font-size: 13px;
   background: #fff;
   color: #333;
-  width: 320px;
+  width: 540px;
+  max-width: 100%;
   padding: 12px;
 }
 
 h1 {
   font-size: 14px;
   font-weight: 600;
-  margin-bottom: 10px;
   color: #1a1a1a;
 }
+
+#titleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+#openTabBtn {
+  padding: 3px 8px;
+  background: #f0f0f0;
+  color: #555;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 11px;
+  cursor: pointer;
+}
+#openTabBtn:hover { background: #e0e0e0; }
 
 /* ユーザーID設定 */
 #userIdSection {
@@ -126,6 +144,38 @@ code {
 #status.error   { background: #fff0f0; color: #c00; }
 #status.hidden  { display: none; }
 
+/* サマリーカード */
+.summary-card {
+  display: flex;
+  justify-content: space-between;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 8px 12px;
+  margin-bottom: 10px;
+}
+.summary-card.hidden { display: none; }
+.summary-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+}
+.summary-item + .summary-item {
+  border-left: 1px solid #e2e8f0;
+}
+.summary-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: #64748b;
+  margin-bottom: 2px;
+}
+.summary-value {
+  font-size: 12px;
+  font-weight: 700;
+  color: #1e293b;
+}
+
 /* テーブル */
 #tableWrapper { overflow-x: auto; }
 #tableWrapper.hidden { display: none; }
@@ -159,6 +209,9 @@ td.time-cell {
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.03em;
 }
+td.range-cell {
+  font-size: 11px;
+}
 td.time-cell:hover {
   background: #e0f0ff;
   color: #0078d7;
@@ -178,6 +231,34 @@ td.time-cell.copied {
   background: #d4f5d4 !important;
   color: #2a7a2a !important;
   transition: background 0.2s;
+}
+
+/* 手動編集済みセル */
+td.time-cell.edited {
+  background: #fef3c7 !important;
+  color: #92400e !important;
+  font-weight: 600;
+}
+td.time-cell.edited::after {
+  content: '✎';
+  font-size: 9px;
+  color: #d97706;
+  margin-left: 2px;
+  vertical-align: super;
+}
+
+/* インライン編集入力ボックス */
+.time-edit-input {
+  width: 54px;
+  padding: 1px 4px;
+  font-size: 12px;
+  text-align: center;
+  border: 1px solid #0078d7;
+  border-radius: 3px;
+  outline: none;
+  background: #fff;
+  color: #111;
+  font-family: inherit;
 }
 
 /* ヒント */

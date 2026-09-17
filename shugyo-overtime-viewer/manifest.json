@@ -1,0 +1,22 @@
+{
+  "manifest_version": 3,
+  "name": "就業WEB 残業ビューア",
+  "version": "1.0.0",
+  "description": "就業WEBタイムカードの申請時刻ベースで残業時間・概算残業手当を表示",
+  "permissions": ["storage"],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "就業WEB 残業ビューア設定"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "http://192.168.33.148/shugyo/*/SW020_Main.aspx*",
+        "http://*/shugyo/*/SW020_Main.aspx*"
+      ],
+      "js": ["content.js"],
+      "css": ["content.css"],
+      "run_at": "document_idle"
+    }
+  ]
+}

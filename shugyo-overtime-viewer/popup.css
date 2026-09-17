@@ -1,0 +1,94 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: "メイリオ", Meiryo, sans-serif;
+  font-size: 13px;
+  color: #333;
+  min-width: 320px;
+}
+
+#app {
+  padding: 16px;
+}
+
+h1 {
+  margin: 0 0 8px;
+  font-size: 15px;
+  color: #1a3a5c;
+}
+
+.hint {
+  margin: 0 0 16px;
+  font-size: 11px;
+  color: #666;
+  line-height: 1.5;
+}
+
+.field {
+  margin-bottom: 14px;
+}
+
+.field label {
+  display: block;
+  margin-bottom: 4px;
+  font-weight: bold;
+  font-size: 12px;
+}
+
+.field input {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  font-size: 13px;
+}
+
+.field-hint {
+  display: block;
+  margin-top: 3px;
+  font-size: 10px;
+  color: #888;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+button {
+  padding: 6px 14px;
+  font-size: 12px;
+  cursor: pointer;
+  border-radius: 3px;
+  border: 1px solid #999;
+  background: #fff;
+}
+
+#saveBtn {
+  background: #1a3a5c;
+  color: #fff;
+  border-color: #1a3a5c;
+}
+
+#saveBtn:hover {
+  background: #2a5080;
+}
+
+#resetBtn:hover {
+  background: #f0f0f0;
+}
+
+.status {
+  margin-top: 12px;
+  font-size: 12px;
+  color: #2e7d32;
+}
+
+.status.hidden {
+  display: none;
+}
