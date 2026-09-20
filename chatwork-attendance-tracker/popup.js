@@ -12,8 +12,66 @@ const userIdInput     = document.getElementById('userIdInput');
 const saveUserIdBtn   = document.getElementById('saveUserIdBtn');
 const summaryCard     = document.getElementById('summaryCard');
 const summaryWorkDays = document.getElementById('summaryWorkDays');
+const summarySyokuteiOt = document.getElementById('summarySyokuteiOt');
+const summaryFutsuOt  = document.getElementById('summaryFutsuOt');
 const summaryTotalOt  = document.getElementById('summaryTotalOt');
 const summaryAvgOt    = document.getElementById('summaryAvgOt');
+const overtimePaySection = document.getElementById('overtimePaySection');
+const overtimePayBtn  = document.getElementById('overtimePayBtn');
+const overtimePayResult = document.getElementById('overtimePayResult');
+
+// ----- 想定残業代（みなし残業20h = 45,400円）-----
+const MINASHI_ZANGYO_AMOUNT = 45400; // みなし残業代（固定）
+const MINASHI_ZANGYO_MINUTES = 20 * 60; // みなし残業時間（20h）
+const BASE_MONTHLY_WAGE = 350400; // 役割給 + 業務手当
+const STANDARD_MONTHLY_HOURS = 174; // 月所定労働時間
+const BASE_HOURLY_RATE = BASE_MONTHLY_WAGE / STANDARD_MONTHLY_HOURS; // 所定残業単価(等倍)
+const FUTSU_HOURLY_RATE = BASE_HOURLY_RATE * 1.25; // 普通残業単価(1.25倍)
+const SYOKUTEI_RATE_PER_MIN = BASE_HOURLY_RATE / 60;
+const FUTSU_RATE_PER_MIN = FUTSU_HOURLY_RATE / 60;
+
+let currentTotals = { minSyokutei: 0, minFutsu: 0, minTotal: 0 };
+
+function calcExpectedOvertimePay(minSyokutei, minFutsu) {
+  const syokuteiPay = Math.round(minSyokutei * SYOKUTEI_RATE_PER_MIN);
+  const futsuPay = Math.round(minFutsu * FUTSU_RATE_PER_MIN);
+  const realPay = syokuteiPay + futsuPay;
+  const extra = Math.max(0, Math.round(realPay - MINASHI_ZANGYO_AMOUNT));
+  return { syokuteiPay, futsuPay, realPay, extra };
+}
+
+function updateOvertimePayButton() {
+  overtimePayResult.classList.add('hidden');
+  overtimePayResult.innerHTML = '';
+
+  if (currentTotals.minTotal <= 0) {
+    overtimePaySection.classList.add('hidden');
+    return;
+  }
+  overtimePaySection.classList.remove('hidden');
+
+  if (currentTotals.minTotal <= MINASHI_ZANGYO_MINUTES) {
+    overtimePayBtn.textContent = '想定残業代：残業代なし（みなし残業20h以内）';
+    overtimePayBtn.disabled = true;
+  } else {
+    overtimePayBtn.textContent = '想定残業代を見る';
+    overtimePayBtn.disabled = false;
+  }
+}
+
+overtimePayBtn.addEventListener('click', () => {
+  const { syokuteiPay, futsuPay, realPay, extra } = calcExpectedOvertimePay(currentTotals.minSyokutei, currentTotals.minFutsu);
+  const syokutei30 = Math.round(SYOKUTEI_RATE_PER_MIN * 30);
+  const futsu30 = Math.round(FUTSU_RATE_PER_MIN * 30);
+  overtimePayResult.innerHTML = `
+    <div class="amount">追加支給見込み: ¥${extra.toLocaleString()}</div>
+    <div>所定残業代 ¥${syokuteiPay.toLocaleString()} + 普通残業代 ¥${futsuPay.toLocaleString()} = 実額換算 ¥${realPay.toLocaleString()}</div>
+    <div>実額換算 ¥${realPay.toLocaleString()} − みなし残業代 ¥${MINASHI_ZANGYO_AMOUNT.toLocaleString()}</div>
+    <div class="note">※ 所定残業33.6円/分・普通残業42円/分で概算。</div>
+    <div class="note">※ 30分あたり: 所定残業 ¥${syokutei30.toLocaleString()} / 普通残業 ¥${futsu30.toLocaleString()}</div>
+  `;
+  overtimePayResult.classList.remove('hidden');
+});
 
 // ----- ユーザーID 保存・読み込み -----
 
@@ -258,18 +316,25 @@ function renderTable(year, month, data) {
 
   let actualWorkDays = 0;
   let totalOtMinutes = 0;
+  let totalSyokuteiMinutes = 0;
+  let totalFutsuMinutes = 0;
+  const holidays = getJapaneseHolidaysInMonth(year, month);
 
   for (const row of data) {
     const date = new Date(year, month - 1, row.day);
     const dayName = DAY_NAMES[date.getDay()];
-    const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+    const isHoliday = holidays.has(row.day);
 
     if (row.start || row.end) {
       actualWorkDays++;
     }
 
     const tr = document.createElement('tr');
-    if (isWeekend) tr.style.color = date.getDay() === 0 ? '#c00' : '#06c';
+    if (date.getDay() === 0 || isHoliday) {
+      tr.style.color = '#c00';
+    } else if (date.getDay() === 6) {
+      tr.style.color = '#06c';
+    }
 
     // 日付セル
     const tdDate = document.createElement('td');
@@ -330,6 +395,8 @@ function renderTable(year, month, data) {
 
     if (ot && ot.minTotal > 0) {
       totalOtMinutes += ot.minTotal;
+      totalSyokuteiMinutes += ot.minSyokutei;
+      totalFutsuMinutes += ot.minFutsu;
       const totalStr = formatMinutesToHHMM(ot.minTotal);
       const syokuteiStr = formatMinutesToHHMM(ot.minSyokutei);
       const futsuStr = formatMinutesToHHMM(ot.minFutsu);
@@ -350,10 +417,15 @@ function renderTable(year, month, data) {
   // ----- サマリーデータの計算 & 表示 -----
   const totalBusinessDays = calculateBusinessDays(year, month);
   summaryWorkDays.textContent = `${actualWorkDays}日 / ${totalBusinessDays}日`;
+  summarySyokuteiOt.textContent = formatMinutesToHHMM(totalSyokuteiMinutes);
+  summaryFutsuOt.textContent = formatMinutesToHHMM(totalFutsuMinutes);
   summaryTotalOt.textContent = formatMinutesToHHMM(totalOtMinutes);
 
   const avgMinutes = actualWorkDays > 0 ? Math.round(totalOtMinutes / actualWorkDays) : 0;
   summaryAvgOt.textContent = `${formatMinutesToHHMM(avgMinutes)} / 日`;
+
+  currentTotals = { minSyokutei: totalSyokuteiMinutes, minFutsu: totalFutsuMinutes, minTotal: totalOtMinutes };
+  updateOvertimePayButton();
 
   summaryCard.classList.remove('hidden');
   tableWrapper.classList.remove('hidden');
@@ -578,6 +650,7 @@ async function onMonthChange() {
     hideStatus();
     summaryCard.classList.add('hidden');
     tableWrapper.classList.add('hidden');
+    overtimePaySection.classList.add('hidden');
   }
 }
 

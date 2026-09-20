@@ -38,13 +38,26 @@
         <span class="summary-value" id="summaryWorkDays">-</span>
       </div>
       <div class="summary-item">
-        <span class="summary-label">残業時間合計</span>
+        <span class="summary-label">所定合計</span>
+        <span class="summary-value" id="summarySyokuteiOt">-</span>
+      </div>
+      <div class="summary-item">
+        <span class="summary-label">普通合計</span>
+        <span class="summary-value" id="summaryFutsuOt">-</span>
+      </div>
+      <div class="summary-item">
+        <span class="summary-label">残業合計</span>
         <span class="summary-value" id="summaryTotalOt">-</span>
       </div>
       <div class="summary-item">
         <span class="summary-label">1日平均残業</span>
         <span class="summary-value" id="summaryAvgOt">-</span>
       </div>
+    </div>
+
+    <div id="overtimePaySection" class="hidden">
+      <button id="overtimePayBtn" type="button">想定残業代</button>
+      <div id="overtimePayResult" class="hidden"></div>
     </div>
 
     <div id="tableWrapper" class="hidden">
