@@ -63,12 +63,22 @@ overtimePayBtn.addEventListener('click', () => {
   const { syokuteiPay, futsuPay, realPay, extra } = calcExpectedOvertimePay(currentTotals.minSyokutei, currentTotals.minFutsu);
   const syokutei30 = Math.round(SYOKUTEI_RATE_PER_MIN * 30);
   const futsu30 = Math.round(FUTSU_RATE_PER_MIN * 30);
+  // 1日あたりの参考額（18:00退勤基準、18:30〜21:00まで30分刻み）
+  const dailyRefs = [];
+  for (let min = 30; min <= 180; min += 30) {
+    const { realPay: pay } = calcExpectedOvertimePay(Math.min(min, 30), Math.max(0, min - 30));
+    const h = 18 + Math.floor(min / 60);
+    const m = String(min % 60).padStart(2, '0');
+    dailyRefs.push(`<div class="note">・${h}:${m}まで: ¥${pay.toLocaleString()}</div>`);
+  }
   overtimePayResult.innerHTML = `
     <div class="amount">追加支給見込み: ¥${extra.toLocaleString()}</div>
     <div>所定残業代 ¥${syokuteiPay.toLocaleString()} + 普通残業代 ¥${futsuPay.toLocaleString()} = 実額換算 ¥${realPay.toLocaleString()}</div>
     <div>実額換算 ¥${realPay.toLocaleString()} − みなし残業代 ¥${MINASHI_ZANGYO_AMOUNT.toLocaleString()}</div>
     <div class="note">※ 所定残業33.6円/分・普通残業42円/分で概算。</div>
     <div class="note">※ 30分あたり: 所定残業 ¥${syokutei30.toLocaleString()} / 普通残業 ¥${futsu30.toLocaleString()}</div>
+    <div class="note">※ 参考（1日あたりの残業代）:</div>
+    ${dailyRefs.join('')}
   `;
   overtimePayResult.classList.remove('hidden');
 });
