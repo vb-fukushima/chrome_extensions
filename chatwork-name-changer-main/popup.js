@@ -528,19 +528,63 @@ vacationButton.addEventListener('click', async () => {
     }
 });
 
+// モード開始時のベース名（元の名前）を決定する
+// どのモードも有効でなければ、Chatwork上の現在の名前を取り直してベースにする
+// （拡張機能の外で手動変更された名前（例: 「〇日休み」付き）も引き継ぐため）
 async function getBaseName() {
-    const stored = await chrome.storage.local.get(['originalName']);
-    if (stored.originalName) return stored.originalName;
+    const stored = await chrome.storage.local.get([
+        'originalName', 'lunchState', 'vacationState', 'lunchPresetSuffix', 'vacationPresetSuffix'
+    ]);
+    const now = Date.now();
+    const isLunchActive = stored.lunchState && stored.lunchState.until > now;
+    const isVacationActive = stored.vacationState && stored.vacationState.until > now;
 
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (tab?.url?.includes('chatwork.com')) {
+    // 既にモード中なら、現在の名前には文言が付いているので保存済みの名前を使う
+    if ((isLunchActive || isVacationActive) && stored.originalName) {
+        return stored.originalName;
+    }
+
+    try {
+        const tab = await openOrFocusChatworkTab();
         const res = await sendMessageSafely(tab.id, { action: 'getCurrentName' });
         if (res && res.success && res.name) {
-            await chrome.storage.local.set({ originalName: res.name });
-            return res.name;
+            // ページ表示が古く、拡張機能の文言が残っている場合に備えて取り除く
+            const knownSuffixes = [
+                lunchSuffixInput.value.trim(),
+                vacationSuffixInput.value.trim(),
+                stored.lunchPresetSuffix,
+                stored.vacationPresetSuffix,
+                stored.lunchState?.suffix,
+                stored.vacationState?.suffix
+            ];
+            const name = stripKnownSuffixes(res.name, knownSuffixes);
+            await chrome.storage.local.set({ originalName: name });
+            forceNameInput.value = name;
+            return name;
+        }
+    } catch (e) {
+        console.error('現在名の取得に失敗しました:', e);
+    }
+
+    return stored.originalName || '名前';
+}
+
+// 名前の末尾に付いている拡張機能の文言（全角スペース区切り）を取り除く
+function stripKnownSuffixes(name, suffixes) {
+    const list = [...new Set(suffixes.map(s => (s || '').trim()).filter(Boolean))];
+    let result = name.trim();
+    let stripped = true;
+    while (stripped) {
+        stripped = false;
+        for (const suffix of list) {
+            const tail = '　' + suffix;
+            if (result.endsWith(tail)) {
+                result = result.slice(0, -tail.length).trim();
+                stripped = true;
+            }
         }
     }
-    return '名前';
+    return result;
 }
 
 // ランチ終了ボタン
