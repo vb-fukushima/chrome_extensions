@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>残業グラフ</title>
+  <link rel="stylesheet" href="chart.css" />
+</head>
+<body>
+  <div id="chartApp">
+    <div class="nav">
+      <button id="prevBtn" type="button">◀ 前月</button>
+      <h1 id="chartTitle">残業グラフ</h1>
+      <button id="nextBtn" type="button">翌月 ▶</button>
+      <button id="todayBtn" type="button">今月に戻る</button>
+    </div>
+    <div id="chartSummary" class="chart-summary"></div>
+    <div id="chartMessage" class="hidden"></div>
+    <div id="chartWrapper" class="hidden">
+      <div class="legend">
+        <span><i class="dot syokutei"></i>所定残業</span>
+        <span><i class="dot futsu"></i>普通残業</span>
+        <span><i class="dot line"></i>累計残業（右軸）</span>
+        <span><i class="dot limit"></i>20h（みなし残業）</span>
+        <span><i class="dot fc"></i>予測（今月ペース）</span>
+        <span><i class="dot fcp"></i>予測（過去平均）</span>
+      </div>
+      <svg id="chartSvg" xmlns="http://www.w3.org/2000/svg"></svg>
+    </div>
+  </div>
+  <script src="holidays.js"></script>
+  <script src="chart.js"></script>
+</body>
+</html>
