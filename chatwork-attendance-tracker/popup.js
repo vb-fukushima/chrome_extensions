@@ -14,6 +14,7 @@ const summaryCard     = document.getElementById('summaryCard');
 const summaryWorkDays = document.getElementById('summaryWorkDays');
 const summarySyokuteiOt = document.getElementById('summarySyokuteiOt');
 const summaryFutsuOt  = document.getElementById('summaryFutsuOt');
+const summaryShinyaOt = document.getElementById('summaryShinyaOt');
 const summaryTotalOt  = document.getElementById('summaryTotalOt');
 const summaryAvgOt    = document.getElementById('summaryAvgOt');
 const overtimePaySection = document.getElementById('overtimePaySection');
@@ -27,17 +28,20 @@ const BASE_MONTHLY_WAGE = 350400; // 役割給 + 業務手当
 const STANDARD_MONTHLY_HOURS = 174; // 月所定労働時間
 const BASE_HOURLY_RATE = BASE_MONTHLY_WAGE / STANDARD_MONTHLY_HOURS; // 所定残業単価(等倍)
 const FUTSU_HOURLY_RATE = BASE_HOURLY_RATE * 1.25; // 普通残業単価(1.25倍)
+const SHINYA_HOURLY_RATE = BASE_HOURLY_RATE * 1.5; // 深夜残業単価(22:00以降、1.5倍)
 const SYOKUTEI_RATE_PER_MIN = BASE_HOURLY_RATE / 60;
 const FUTSU_RATE_PER_MIN = FUTSU_HOURLY_RATE / 60;
+const SHINYA_RATE_PER_MIN = SHINYA_HOURLY_RATE / 60;
 
-let currentTotals = { minSyokutei: 0, minFutsu: 0, minTotal: 0 };
+let currentTotals = { minSyokutei: 0, minFutsu: 0, minShinya: 0, minTotal: 0 };
 
-function calcExpectedOvertimePay(minSyokutei, minFutsu) {
+function calcExpectedOvertimePay(minSyokutei, minFutsu, minShinya = 0) {
   const syokuteiPay = Math.round(minSyokutei * SYOKUTEI_RATE_PER_MIN);
   const futsuPay = Math.round(minFutsu * FUTSU_RATE_PER_MIN);
-  const realPay = syokuteiPay + futsuPay;
+  const shinyaPay = Math.round(minShinya * SHINYA_RATE_PER_MIN);
+  const realPay = syokuteiPay + futsuPay + shinyaPay;
   const extra = Math.max(0, Math.round(realPay - MINASHI_ZANGYO_AMOUNT));
-  return { syokuteiPay, futsuPay, realPay, extra };
+  return { syokuteiPay, futsuPay, shinyaPay, realPay, extra };
 }
 
 function updateOvertimePayButton() {
@@ -60,7 +64,7 @@ function updateOvertimePayButton() {
 }
 
 overtimePayBtn.addEventListener('click', () => {
-  const { syokuteiPay, futsuPay, realPay, extra } = calcExpectedOvertimePay(currentTotals.minSyokutei, currentTotals.minFutsu);
+  const { syokuteiPay, futsuPay, shinyaPay, realPay, extra } = calcExpectedOvertimePay(currentTotals.minSyokutei, currentTotals.minFutsu, currentTotals.minShinya);
   const syokutei30 = Math.round(SYOKUTEI_RATE_PER_MIN * 30);
   const futsu30 = Math.round(FUTSU_RATE_PER_MIN * 30);
   // 1日あたりの参考額（18:00退勤基準、18:30〜21:00まで30分刻み）
@@ -73,9 +77,9 @@ overtimePayBtn.addEventListener('click', () => {
   }
   overtimePayResult.innerHTML = `
     <div class="amount">追加支給見込み: ¥${extra.toLocaleString()}</div>
-    <div>所定残業代 ¥${syokuteiPay.toLocaleString()} + 普通残業代 ¥${futsuPay.toLocaleString()} = 実額換算 ¥${realPay.toLocaleString()}</div>
+    <div>所定残業代 ¥${syokuteiPay.toLocaleString()} + 普通残業代 ¥${futsuPay.toLocaleString()}${currentTotals.minShinya > 0 ? ` + 深夜残業代 ¥${shinyaPay.toLocaleString()}` : ''} = 実額換算 ¥${realPay.toLocaleString()}</div>
     <div>実額換算 ¥${realPay.toLocaleString()} − みなし残業代 ¥${MINASHI_ZANGYO_AMOUNT.toLocaleString()}</div>
-    <div class="note">※ 所定残業33.6円/分・普通残業42円/分で概算。</div>
+    <div class="note">※ 所定残業33.6円/分・普通残業42円/分・深夜残業(22:00以降)50.4円/分で概算。</div>
     <div class="note">※ 30分あたり: 所定残業 ¥${syokutei30.toLocaleString()} / 普通残業 ¥${futsu30.toLocaleString()}</div>
     <div class="note">※ 参考（1日あたりの残業代）:</div>
     ${dailyRefs.join('')}
@@ -252,6 +256,7 @@ function renderTable(year, month, data) {
   let totalOtMinutes = 0;
   let totalSyokuteiMinutes = 0;
   let totalFutsuMinutes = 0;
+  let totalShinyaMinutes = 0;
   const holidays = getJapaneseHolidaysInMonth(year, month);
 
   for (const row of data) {
@@ -331,11 +336,13 @@ function renderTable(year, month, data) {
       totalOtMinutes += ot.minTotal;
       totalSyokuteiMinutes += ot.minSyokutei;
       totalFutsuMinutes += ot.minFutsu;
+      totalShinyaMinutes += ot.minShinya;
       const totalStr = formatMinutesToHHMM(ot.minTotal);
       const syokuteiStr = formatMinutesToHHMM(ot.minSyokutei);
       const futsuStr = formatMinutesToHHMM(ot.minFutsu);
 
-      const otText = `${totalStr} (所定${syokuteiStr}/普通${futsuStr})`;
+      const shinyaPart = ot.minShinya > 0 ? `/深夜${formatMinutesToHHMM(ot.minShinya)}` : '';
+      const otText = `${totalStr} (所定${syokuteiStr}/普通${futsuStr}${shinyaPart})`;
       tdOt.textContent = otText;
       tdOt.dataset.copyText = otText;
       tdOt.addEventListener('click', handleRangeCellClick);
@@ -353,12 +360,13 @@ function renderTable(year, month, data) {
   summaryWorkDays.textContent = `${actualWorkDays}日 / ${totalBusinessDays}日`;
   summarySyokuteiOt.textContent = formatMinutesToHHMM(totalSyokuteiMinutes);
   summaryFutsuOt.textContent = formatMinutesToHHMM(totalFutsuMinutes);
+  summaryShinyaOt.textContent = formatMinutesToHHMM(totalShinyaMinutes);
   summaryTotalOt.textContent = formatMinutesToHHMM(totalOtMinutes);
 
   const avgMinutes = actualWorkDays > 0 ? Math.round(totalOtMinutes / actualWorkDays) : 0;
   summaryAvgOt.textContent = `${formatMinutesToHHMM(avgMinutes)} / 日`;
 
-  currentTotals = { minSyokutei: totalSyokuteiMinutes, minFutsu: totalFutsuMinutes, minTotal: totalOtMinutes };
+  currentTotals = { minSyokutei: totalSyokuteiMinutes, minFutsu: totalFutsuMinutes, minShinya: totalShinyaMinutes, minTotal: totalOtMinutes };
   updateOvertimePayButton();
 
   summaryCard.classList.remove('hidden');
@@ -376,36 +384,30 @@ function formatMinutesToHHMM(totalMinutes) {
 /**
  * 09:30〜18:00 定時
  * 18:00〜18:30 所定残業 (最大30分)
- * 18:30以降 普通残業
+ * 18:30〜22:00 普通残業
+ * 22:00以降   深夜残業 (1.5倍)
  */
 function calculateOvertime(startHHMM, endHHMM) {
   if (!startHHMM || !endHHMM) return null;
 
   const endH = parseInt(endHHMM.slice(0, 2), 10);
   const endM = parseInt(endHHMM.slice(2, 4), 10);
-  const endMinutes = endH * 60 + endM;
+  let endMinutes = endH * 60 + endM;
+  if (endMinutes < 5 * 60) endMinutes += 24 * 60; // 0:00〜5:00は翌日扱い
 
   const base1800 = 18 * 60;      // 18:00 (1080分)
   const base1830 = 18 * 60 + 30; // 18:30 (1110分)
+  const base2200 = 22 * 60;      // 22:00 (1320分)
 
-  if (endMinutes <= base1800) {
-    return { minSyokutei: 0, minFutsu: 0, minTotal: 0 };
-  }
-
-  let minSyokutei = 0;
-  let minFutsu = 0;
-
-  if (endMinutes <= base1830) {
-    minSyokutei = endMinutes - base1800;
-  } else {
-    minSyokutei = 30;
-    minFutsu = endMinutes - base1830;
-  }
+  const minSyokutei = Math.max(0, Math.min(endMinutes, base1830) - base1800);
+  const minFutsu = Math.max(0, Math.min(endMinutes, base2200) - base1830);
+  const minShinya = Math.max(0, endMinutes - base2200);
 
   return {
     minSyokutei,
     minFutsu,
-    minTotal: minSyokutei + minFutsu,
+    minShinya,
+    minTotal: minSyokutei + minFutsu + minShinya,
   };
 }
 
