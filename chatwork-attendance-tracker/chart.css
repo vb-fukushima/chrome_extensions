@@ -42,12 +42,14 @@ body {
 }
 .dot.syokutei { background: #f5a623; }
 .dot.futsu { background: #4a7bd0; }
+.dot.shinya { background: #7b4ab0; }
 
 #chartSvg { width: 100%; max-width: 1100px; height: 420px; }
 #chartSvg text { font-size: 11px; fill: #666; }
 #chartSvg .grid { stroke: #e5e5e5; stroke-width: 1; }
 #chartSvg .bar-syokutei { fill: #f5a623; }
 #chartSvg .bar-futsu { fill: #4a7bd0; }
+#chartSvg .bar-shinya { fill: #7b4ab0; }
 #chartSvg .bar-hit:hover { fill: rgba(0, 0, 0, 0.06); }
 
 .dot.line { background: #d33; }

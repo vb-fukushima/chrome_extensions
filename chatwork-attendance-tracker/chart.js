@@ -13,14 +13,19 @@ function formatMinutesToHHMM(totalMinutes) {
   return `${h}:${String(m).padStart(2, '0')}`;
 }
 
-// popup.js の calculateOvertime と同じ基準（18:00〜18:30 所定 / 18:30以降 普通）
+// popup.js の calculateOvertime と同じ基準（18:00〜18:30 所定 / 18:30〜22:00 普通 / 22:00以降 深夜）
 function calculateOvertime(startHHMM, endHHMM) {
   if (!startHHMM || !endHHMM) return null;
-  const endMinutes = parseInt(endHHMM.slice(0, 2), 10) * 60 + parseInt(endHHMM.slice(2, 4), 10);
-  if (endMinutes <= 18 * 60) return { minSyokutei: 0, minFutsu: 0 };
-  if (endMinutes <= 18 * 60 + 30) return { minSyokutei: endMinutes - 18 * 60, minFutsu: 0 };
-  return { minSyokutei: 30, minFutsu: endMinutes - (18 * 60 + 30) };
+  let endMinutes = parseInt(endHHMM.slice(0, 2), 10) * 60 + parseInt(endHHMM.slice(2, 4), 10);
+  if (endMinutes < 5 * 60) endMinutes += 24 * 60; // 0:00〜5:00は翌日扱い
+  return {
+    minSyokutei: Math.max(0, Math.min(endMinutes, 18 * 60 + 30) - 18 * 60),
+    minFutsu: Math.max(0, Math.min(endMinutes, 22 * 60) - (18 * 60 + 30)),
+    minShinya: Math.max(0, endMinutes - 22 * 60),
+  };
 }
+
+const otTotal = (o) => o.minSyokutei + o.minFutsu + o.minShinya;
 
 // 過去月（最大6か月）の出勤日あたり平均残業分。データがなければ null
 async function loadPastAvgPerDay() {
@@ -37,7 +42,7 @@ async function loadPastAvgPerDay() {
       if (!d.start && !d.end) continue;
       days++;
       const o = calculateOvertime(d.start, d.end);
-      if (o) ot += o.minSyokutei + o.minFutsu;
+      if (o) ot += otTotal(o);
     }
   }
   return days > 0 ? { avg: ot / days, months: past.length } : null;
@@ -61,11 +66,12 @@ function formatForecast(min) {
   return `${formatMinutesToHHMM(r)}${r > MINASHI_MINUTES ? `（20h+${formatMinutesToHHMM(r - MINASHI_MINUTES)}）` : ''}`;
 }
 
-function renderSummary(days, totalMin, totalSyokutei, totalFutsu, forecast) {
+function renderSummary(days, totalMin, totalSyokutei, totalFutsu, totalShinya, forecast) {
   const items = [
     ['残業合計', `${formatMinutesToHHMM(totalMin)}（${(totalMin / 60).toFixed(1)}h）`],
     ['所定残業', formatMinutesToHHMM(totalSyokutei)],
     ['普通残業', formatMinutesToHHMM(totalFutsu)],
+    ...(totalShinya > 0 ? [['深夜残業', formatMinutesToHHMM(totalShinya)]] : []),
     ['1日平均', days > 0 ? `${formatMinutesToHHMM(Math.round(totalMin / days))} / 日` : '-'],
     totalMin > MINASHI_MINUTES
       ? ['20h超過', `+${formatMinutesToHHMM(totalMin - MINASHI_MINUTES)} 超過`]
@@ -94,7 +100,7 @@ function renderChart(rows, forecast) {
   const m = { top: 20, right: 55, bottom: 46, left: 50 };
   svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
 
-  const maxMin = Math.max(60, ...rows.map((r) => r.minSyokutei + r.minFutsu));
+  const maxMin = Math.max(60, ...rows.map(otTotal));
   const maxHour = Math.ceil(maxMin / 60);
   const plotW = W - m.left - m.right;
   const plotH = H - m.top - m.bottom;
@@ -104,7 +110,7 @@ function renderChart(rows, forecast) {
 
   // 累計（右軸）: 20hと最大累計が収まる1時間刻みの上限
   let acc = 0;
-  const cum = rows.map((r) => (acc += r.minSyokutei + r.minFutsu));
+  const cum = rows.map((r) => (acc += otTotal(r)));
   const fMax = forecast ? Math.max(forecast.a.at(-1), forecast.b ? forecast.b.at(-1) : 0) : 0;
   const cumMaxHour = Math.max(MINASHI_MINUTES / 60, Math.ceil(Math.max(acc, fMax) / 60));
   const yc = (min) => m.top + plotH - (min / (cumMaxHour * 60)) * plotH;
@@ -121,6 +127,7 @@ function renderChart(rows, forecast) {
 
   rows.forEach((r, i) => {
     const x = m.left + slot * i + (slot - barW) / 2;
+    const yShinyaTop = y(otTotal(r));
     const yFutsuTop = y(r.minSyokutei + r.minFutsu);
     const ySyokuteiTop = y(r.minSyokutei);
     const base = y(0);
@@ -132,9 +139,13 @@ function renderChart(rows, forecast) {
       svg.appendChild(svgEl('rect', { class: 'bar-futsu', x, y: yFutsuTop, width: barW, height: ySyokuteiTop - yFutsuTop }));
     }
 
-    const total = r.minSyokutei + r.minFutsu;
+    if (r.minShinya > 0) {
+      svg.appendChild(svgEl('rect', { class: 'bar-shinya', x, y: yShinyaTop, width: barW, height: yFutsuTop - yShinyaTop }));
+    }
+
+    const total = otTotal(r);
     if (total > 0) {
-      svg.appendChild(svgEl('text', { x: x + barW / 2, y: yFutsuTop - 4, 'text-anchor': 'middle' }, formatMinutesToHHMM(total)));
+      svg.appendChild(svgEl('text', { x: x + barW / 2, y: yShinyaTop - 4, 'text-anchor': 'middle' }, formatMinutesToHHMM(total)));
     }
 
     const dayLabel = svgEl('text', { x: x + barW / 2, y: H - m.bottom + 14, 'text-anchor': 'middle' }, String(r.day));
@@ -147,7 +158,7 @@ function renderChart(rows, forecast) {
     svg.appendChild(dowLabel);
 
     const hit = svgEl('rect', { class: 'bar-hit', x: m.left + slot * i, y: m.top, width: slot, height: plotH, fill: 'transparent' });
-    hit.appendChild(svgEl('title', {}, `${month}/${r.day}(${DAY_NAMES[r.dow]}) 残業 ${formatMinutesToHHMM(total)}（所定${formatMinutesToHHMM(r.minSyokutei)} / 普通${formatMinutesToHHMM(r.minFutsu)}）`));
+    hit.appendChild(svgEl('title', {}, `${month}/${r.day}(${DAY_NAMES[r.dow]}) 残業 ${formatMinutesToHHMM(total)}（所定${formatMinutesToHHMM(r.minSyokutei)} / 普通${formatMinutesToHHMM(r.minFutsu)}${r.minShinya > 0 ? ` / 深夜${formatMinutesToHHMM(r.minShinya)}` : ''}）`));
     svg.appendChild(hit);
   });
 
@@ -221,19 +232,20 @@ async function init() {
     return;
   }
 
-  let workDays = 0, totalSyokutei = 0, totalFutsu = 0;
+  let workDays = 0, totalSyokutei = 0, totalFutsu = 0, totalShinya = 0;
   const holidays = getJapaneseHolidaysInMonth(year, month);
   const rows = cache.data.map((d) => {
     if (d.start || d.end) workDays++;
-    const ot = calculateOvertime(d.start, d.end) || { minSyokutei: 0, minFutsu: 0 };
+    const ot = calculateOvertime(d.start, d.end) || { minSyokutei: 0, minFutsu: 0, minShinya: 0 };
     totalSyokutei += ot.minSyokutei;
     totalFutsu += ot.minFutsu;
+    totalShinya += ot.minShinya;
     const dow = new Date(year, month - 1, d.day).getDay();
     return { day: d.day, dow, off: dow === 0 || dow === 6 || holidays.has(d.day), ...ot };
   });
 
   // 着地予測: 最終実績日以降の営業日に平均残業を積み上げる（過去月など残り営業日がなければなし）
-  const total = totalSyokutei + totalFutsu;
+  const total = totalSyokutei + totalFutsu + totalShinya;
   let lastIdx = -1;
   rows.forEach((r, i) => { if (cache.data[i].start || cache.data[i].end) lastIdx = i; });
   const remainDays = lastIdx < 0 ? 0 : rows.slice(lastIdx + 1).filter((r) => !r.off).length;
@@ -254,7 +266,7 @@ async function init() {
     };
   }
 
-  renderSummary(workDays, total, totalSyokutei, totalFutsu, forecast);
+  renderSummary(workDays, total, totalSyokutei, totalFutsu, totalShinya, forecast);
   document.getElementById('chartWrapper').classList.remove('hidden');
   renderChart(rows, forecast);
 }
