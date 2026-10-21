@@ -277,6 +277,7 @@ async function updateMeta(year, month, day, patch) {
     currentMeta[day] = next;
   }
   await chrome.storage.local.set({ [metaKey(year, month)]: currentMeta });
+  scheduleSheetSync(year, month);
 }
 
 function renderMetaSummary() {
@@ -656,6 +657,7 @@ function cacheKey(year, month) {
 
 async function saveCache(year, month, data) {
   await chrome.storage.local.set({ [cacheKey(year, month)]: { data, savedAt: Date.now() } });
+  scheduleSheetSync(year, month);
 }
 
 async function loadCache(year, month) {

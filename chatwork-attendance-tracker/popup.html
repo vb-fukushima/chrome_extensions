@@ -32,6 +32,18 @@
 
     <div id="status" class="hidden"></div>
 
+    <details id="sheetSection">
+      <summary>Googleスプレッドシート連携</summary>
+      <input type="text" id="sheetUrlInput" placeholder="Apps ScriptウェブアプリのURL (https://script.google.com/macros/s/.../exec)" />
+      <input type="password" id="sheetTokenInput" placeholder="合言葉 (GASのスクリプトプロパティ TOKEN と同じ値)" />
+      <div id="sheetRow">
+        <label><input type="checkbox" id="sheetAutoCheck" checked /> 取得・編集時に自動同期</label>
+        <button id="sheetSaveBtn" type="button">保存</button>
+        <button id="sheetSyncBtn" type="button">今すぐ同期</button>
+      </div>
+      <p id="sheetSyncStatus" class="hint"></p>
+    </details>
+
     <div id="summaryCard" class="summary-card hidden">
       <div class="summary-item">
         <span class="summary-label">営業日数</span>
@@ -87,5 +99,6 @@
   </div>
   <script src="holidays.js"></script>
   <script src="popup.js"></script>
+  <script src="sheet-sync.js"></script>
 </body>
 </html>

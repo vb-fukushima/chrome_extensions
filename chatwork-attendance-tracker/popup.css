@@ -356,3 +356,41 @@ tbody tr.leave-hourly:hover, tbody tr.leave-summer:hover, tbody tr.leave-other:h
   text-align: center;
   margin-top: 6px;
 }
+
+/* ----- スプレッドシート連携 ----- */
+#sheetSection {
+  margin-bottom: 8px;
+  font-size: 12px;
+}
+#sheetSection summary {
+  cursor: pointer;
+  color: #555;
+}
+#sheetSection input[type="text"],
+#sheetSection input[type="password"] {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+  padding: 4px 6px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 12px;
+}
+#sheetRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+}
+#sheetRow label { flex: 1; }
+#sheetRow button {
+  padding: 3px 8px;
+  background: #f0f0f0;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 11px;
+  cursor: pointer;
+}
+#sheetRow button:hover { background: #e0e0e0; }
+#sheetSyncStatus.error { color: #c00; }
+#sheetSection input:disabled { background: #f3f3f3; color: #888; cursor: not-allowed; }

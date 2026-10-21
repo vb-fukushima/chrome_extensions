@@ -41,6 +41,33 @@ Chatworkの投稿から勤務開始・終了のログを自動で抽出・集計
 
 ---
 
+## 📊 スプレッドシート連携（他デバイスから閲覧）
+
+取得・手動編集・在宅/休み変更のたびに、Googleスプレッドシートへ自動で書き出せます（Apps Script ウェブアプリ経由）。
+
+1. 新しいスプレッドシートを作成 → `拡張機能 > Apps Script` を開く
+2. `gas/Code.gs` の内容を貼り付け
+3. `プロジェクトの設定 > スクリプトプロパティ` に `TOKEN` = 任意の合言葉 を追加
+4. `デプロイ > 新しいデプロイ > ウェブアプリ`（実行ユーザー: 自分 / アクセス: 全員）→ 発行された `/exec` のURLをコピー
+5. 拡張機能のポップアップ「Googleスプレッドシート連携」にURLと合言葉を入力して保存
+6. `chrome://extensions` で拡張機能を再読み込み（host_permissions 追加のため）
+
+シートには月ごとのタブ（例: `2026-10`）に日別明細、`サマリー`タブに月別集計が入ります。
+
+### GASの自動デプロイ（任意）
+
+`main` に `gas/` 配下の変更をpushすると、GitHub Actions（`.github/workflows/deploy-attendance-gas.yml`）が clasp で Apps Script を更新します。ウェブアプリのURLは変わりません。
+
+事前準備:
+1. https://script.google.com/home/usersettings で「Google Apps Script API」をオンにする
+2. `clasp login` を実行（`~/.clasprc.json` ができる）
+3. GitHubリポジトリの `Settings > Secrets and variables > Actions` に登録
+   - `CLASPRC_JSON`: `~/.clasprc.json` の中身
+   - `GAS_SCRIPT_ID`: Apps Script の `プロジェクトの設定 > スクリプトID`
+   - `GAS_DEPLOYMENT_ID`: `デプロイ > デプロイを管理` にあるウェブアプリのデプロイID
+
+---
+
 ## 📁 ディレクトリ構成
 
 ```text
