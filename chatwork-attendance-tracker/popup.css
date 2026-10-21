@@ -321,6 +321,34 @@ td.time-cell.edited::after {
   font-family: inherit;
 }
 
+/* 在宅・休み */
+.meta-summary {
+  margin-bottom: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #475569;
+  text-align: center;
+}
+.summary-card.hidden ~ .meta-summary { display: none; }
+.remote-check { cursor: pointer; }
+.leave-select {
+  padding: 1px 2px;
+  font-size: 11px;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  background: #fff;
+  cursor: pointer;
+}
+tbody tr.remote { box-shadow: inset 3px 0 0 #14b8a6; }
+tbody tr.leave-paid   { background: #dcfce7; }
+tbody tr.leave-am     { background: #dbeafe; }
+tbody tr.leave-pm     { background: #e0e7ff; }
+tbody tr.leave-hourly { background: #f3e8ff; }
+tbody tr.leave-summer { background: #ffedd5; }
+tbody tr.leave-other  { background: #e5e7eb; }
+tbody tr.leave-paid:hover, tbody tr.leave-am:hover, tbody tr.leave-pm:hover,
+tbody tr.leave-hourly:hover, tbody tr.leave-summer:hover, tbody tr.leave-other:hover { filter: brightness(0.97); }
+
 /* ヒント */
 .hint {
   font-size: 11px;

@@ -17,6 +17,7 @@ const summaryFutsuOt  = document.getElementById('summaryFutsuOt');
 const summaryShinyaOt = document.getElementById('summaryShinyaOt');
 const summaryTotalOt  = document.getElementById('summaryTotalOt');
 const summaryAvgOt    = document.getElementById('summaryAvgOt');
+const metaSummary     = document.getElementById('metaSummary');
 const overtimePaySection = document.getElementById('overtimePaySection');
 const overtimePayBtn  = document.getElementById('overtimePayBtn');
 const overtimePayResult = document.getElementById('overtimePayResult');
@@ -243,6 +244,55 @@ async function sendMessageSafely(tabId, message) {
   });
 }
 
+// ----- 在宅・休みのメタ情報（取得データとは別に保存し、再取得で消えないようにする） -----
+
+const LEAVE_TYPES = ['有給', 'AM半休', 'PM半休', '時間給', '夏休み', 'その他'];
+const LEAVE_CLASSES = {
+  '有給': 'leave-paid',
+  'AM半休': 'leave-am',
+  'PM半休': 'leave-pm',
+  '時間給': 'leave-hourly',
+  '夏休み': 'leave-summer',
+  'その他': 'leave-other',
+};
+
+const FULL_DAY_LEAVES = ['有給', '夏休み']; // 終日休み（残業は集計しない）
+
+let currentMeta = {}; // { [day]: { remote: boolean, leave: string } }
+
+function metaKey(year, month) {
+  return `attendanceMeta_${year}_${String(month).padStart(2, '0')}`;
+}
+
+async function loadMeta(year, month) {
+  const result = await chrome.storage.local.get(metaKey(year, month));
+  currentMeta = result[metaKey(year, month)] || {};
+}
+
+async function updateMeta(year, month, day, patch) {
+  const next = { ...(currentMeta[day] || {}), ...patch };
+  if (!next.remote && !next.leave) {
+    delete currentMeta[day];
+  } else {
+    currentMeta[day] = next;
+  }
+  await chrome.storage.local.set({ [metaKey(year, month)]: currentMeta });
+}
+
+function renderMetaSummary() {
+  const counts = {};
+  let remoteDays = 0;
+  for (const m of Object.values(currentMeta)) {
+    if (m.remote) remoteDays++;
+    if (m.leave) counts[m.leave] = (counts[m.leave] || 0) + 1;
+  }
+  const parts = [`在宅 ${remoteDays}日`];
+  for (const type of LEAVE_TYPES) {
+    if (counts[type]) parts.push(`${type} ${counts[type]}日`);
+  }
+  metaSummary.textContent = parts.join(' / ');
+}
+
 // ----- テーブル描画 & サマリー計算 -----
 
 const DAY_NAMES = ['日', '月', '火', '水', '木', '金', '土'];
@@ -330,7 +380,8 @@ function renderTable(year, month, data) {
     // 残業時間セル (合計・所定・普通)
     const tdOt = document.createElement('td');
     tdOt.className = 'time-cell range-cell';
-    const ot = calculateOvertime(row.start, row.end);
+    const meta = currentMeta[row.day] || {};
+    const ot = FULL_DAY_LEAVES.includes(meta.leave) ? null : calculateOvertime(row.start, row.end);
 
     if (ot && ot.minTotal > 0) {
       totalOtMinutes += ot.minTotal;
@@ -352,6 +403,45 @@ function renderTable(year, month, data) {
     }
     tr.appendChild(tdOt);
 
+    // 在宅チェック
+    const tdRemote = document.createElement('td');
+    const remoteCheck = document.createElement('input');
+    remoteCheck.type = 'checkbox';
+    remoteCheck.className = 'remote-check';
+    remoteCheck.checked = !!meta.remote;
+    remoteCheck.addEventListener('change', async () => {
+      tr.classList.toggle('remote', remoteCheck.checked);
+      await updateMeta(year, month, row.day, { remote: remoteCheck.checked });
+      renderMetaSummary();
+    });
+    tdRemote.appendChild(remoteCheck);
+    tr.appendChild(tdRemote);
+    if (meta.remote) tr.classList.add('remote');
+
+    // 休み種別セレクト
+    const tdLeave = document.createElement('td');
+    const leaveSelect = document.createElement('select');
+    leaveSelect.className = 'leave-select';
+    const noneOpt = document.createElement('option');
+    noneOpt.value = '';
+    noneOpt.textContent = '-';
+    leaveSelect.appendChild(noneOpt);
+    for (const type of LEAVE_TYPES) {
+      const opt = document.createElement('option');
+      opt.value = type;
+      opt.textContent = type;
+      leaveSelect.appendChild(opt);
+    }
+    leaveSelect.value = meta.leave || '';
+    if (meta.leave) tr.classList.add(LEAVE_CLASSES[meta.leave]);
+    leaveSelect.addEventListener('change', async () => {
+      await updateMeta(year, month, row.day, { leave: leaveSelect.value });
+      // 終日休みの残業除外やサマリーに反映するため再描画
+      renderTable(year, month, currentRenderData);
+    });
+    tdLeave.appendChild(leaveSelect);
+    tr.appendChild(tdLeave);
+
     tableBody.appendChild(tr);
   }
 
@@ -369,6 +459,7 @@ function renderTable(year, month, data) {
   currentTotals = { minSyokutei: totalSyokuteiMinutes, minFutsu: totalFutsuMinutes, minShinya: totalShinyaMinutes, minTotal: totalOtMinutes };
   updateOvertimePayButton();
 
+  renderMetaSummary();
   summaryCard.classList.remove('hidden');
   tableWrapper.classList.remove('hidden');
 }
@@ -578,6 +669,7 @@ async function onMonthChange() {
   const year  = parseInt(yearSelect.value, 10);
   const month = parseInt(monthSelect.value, 10);
   const cache = await loadCache(year, month);
+  await loadMeta(year, month);
   if (cache) {
     const saved = new Date(cache.savedAt).toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
     showStatus(`キャッシュ表示中（${saved} 取得）`, 'loading');
@@ -668,6 +760,7 @@ fetchBtn.addEventListener('click', async () => {
     const fetchedData = await fetchFromChatwork(year, month, myUserId, stopTs);
     const finalData = mergeAttendanceData(cache ? cache.data : null, fetchedData);
     await saveCache(year, month, finalData);
+    await loadMeta(year, month);
 
     hideStatus();
     renderTable(year, month, finalData);
@@ -693,6 +786,7 @@ forceFetchBtn.addEventListener('click', async () => {
   try {
     const data = await fetchFromChatwork(year, month, myUserId, null);
     await saveCache(year, month, data);
+    await loadMeta(year, month);
     hideStatus();
     renderTable(year, month, data);
   } catch (err) {
