@@ -1,0 +1,69 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 13px;
+  background: #fff;
+  color: #333;
+  padding: 24px;
+}
+
+.nav { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+.nav h1 { font-size: 18px; min-width: 200px; text-align: center; }
+.nav button {
+  padding: 4px 10px; background: #f0f0f0; border: 1px solid #ddd;
+  border-radius: 4px; cursor: pointer; font-size: 12px;
+}
+.nav button:hover { background: #e0e0e0; }
+#chartMessage { margin-bottom: 16px; color: #777; }
+
+.hidden { display: none; }
+
+.chart-summary {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+.chart-summary .item {
+  padding: 10px 16px;
+  background: #f5f7fa;
+  border-radius: 6px;
+}
+.chart-summary .label { display: block; font-size: 11px; color: #777; }
+.chart-summary .value { font-size: 20px; font-weight: 600; }
+
+.legend { display: flex; gap: 16px; margin-bottom: 8px; font-size: 12px; }
+.dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 4px;
+  border-radius: 2px;
+}
+.dot.syokutei { background: #f5a623; }
+.dot.futsu { background: #4a7bd0; }
+.dot.shinya { background: #7b4ab0; }
+
+#chartSvg { width: 100%; max-width: 1100px; height: 420px; }
+#chartSvg text { font-size: 11px; fill: #666; }
+#chartSvg .grid { stroke: #e5e5e5; stroke-width: 1; }
+#chartSvg .bar-syokutei { fill: #f5a623; }
+#chartSvg .bar-futsu { fill: #4a7bd0; }
+#chartSvg .bar-shinya { fill: #7b4ab0; }
+#chartSvg .bar-hit:hover { fill: rgba(0, 0, 0, 0.06); }
+
+.dot.line { background: #d33; }
+.dot.limit { background: #888; }
+#chartSvg .cum-line { fill: none; stroke: #d33; stroke-width: 2.5; }
+#chartSvg .cum-dot { fill: #d33; }
+#chartSvg .cum-over { fill: rgba(221, 51, 51, 0.08); }
+#chartSvg .limit-line { stroke: #888; stroke-width: 1.5; stroke-dasharray: 6 4; }
+#chartSvg .limit-label { fill: #555; font-weight: 600; }
+#chartSvg .axis-right { fill: #d33; }
+#chartSvg text.off-day { fill: #c00; font-weight: 600; }
+.dot.fc { background: #d33; opacity: 0.5; }
+.dot.fcp { background: #7a5bd0; opacity: 0.7; }
+#chartSvg .forecast-line { fill: none; stroke: #d33; stroke-width: 2; stroke-dasharray: 5 4; opacity: 0.7; }
+#chartSvg .forecast-line.past { stroke: #7a5bd0; }
+#chartSvg .forecast-label { fill: #555; font-weight: 600; }
+.chart-summary { flex-wrap: wrap; }

@@ -9,7 +9,9 @@
     "tabs"
   ],
   "host_permissions": [
-    "https://www.chatwork.com/*"
+    "https://www.chatwork.com/*",
+    "https://script.google.com/*",
+    "https://script.googleusercontent.com/*"
   ],
   "action": {
     "default_popup": "popup.html"

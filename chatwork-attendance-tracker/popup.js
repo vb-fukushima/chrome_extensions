@@ -14,8 +14,10 @@ const summaryCard     = document.getElementById('summaryCard');
 const summaryWorkDays = document.getElementById('summaryWorkDays');
 const summarySyokuteiOt = document.getElementById('summarySyokuteiOt');
 const summaryFutsuOt  = document.getElementById('summaryFutsuOt');
+const summaryShinyaOt = document.getElementById('summaryShinyaOt');
 const summaryTotalOt  = document.getElementById('summaryTotalOt');
 const summaryAvgOt    = document.getElementById('summaryAvgOt');
+const metaSummary     = document.getElementById('metaSummary');
 const overtimePaySection = document.getElementById('overtimePaySection');
 const overtimePayBtn  = document.getElementById('overtimePayBtn');
 const overtimePayResult = document.getElementById('overtimePayResult');
@@ -27,17 +29,20 @@ const BASE_MONTHLY_WAGE = 350400; // 役割給 + 業務手当
 const STANDARD_MONTHLY_HOURS = 174; // 月所定労働時間
 const BASE_HOURLY_RATE = BASE_MONTHLY_WAGE / STANDARD_MONTHLY_HOURS; // 所定残業単価(等倍)
 const FUTSU_HOURLY_RATE = BASE_HOURLY_RATE * 1.25; // 普通残業単価(1.25倍)
+const SHINYA_HOURLY_RATE = BASE_HOURLY_RATE * 1.5; // 深夜残業単価(22:00以降、1.5倍)
 const SYOKUTEI_RATE_PER_MIN = BASE_HOURLY_RATE / 60;
 const FUTSU_RATE_PER_MIN = FUTSU_HOURLY_RATE / 60;
+const SHINYA_RATE_PER_MIN = SHINYA_HOURLY_RATE / 60;
 
-let currentTotals = { minSyokutei: 0, minFutsu: 0, minTotal: 0 };
+let currentTotals = { minSyokutei: 0, minFutsu: 0, minShinya: 0, minTotal: 0 };
 
-function calcExpectedOvertimePay(minSyokutei, minFutsu) {
+function calcExpectedOvertimePay(minSyokutei, minFutsu, minShinya = 0) {
   const syokuteiPay = Math.round(minSyokutei * SYOKUTEI_RATE_PER_MIN);
   const futsuPay = Math.round(minFutsu * FUTSU_RATE_PER_MIN);
-  const realPay = syokuteiPay + futsuPay;
+  const shinyaPay = Math.round(minShinya * SHINYA_RATE_PER_MIN);
+  const realPay = syokuteiPay + futsuPay + shinyaPay;
   const extra = Math.max(0, Math.round(realPay - MINASHI_ZANGYO_AMOUNT));
-  return { syokuteiPay, futsuPay, realPay, extra };
+  return { syokuteiPay, futsuPay, shinyaPay, realPay, extra };
 }
 
 function updateOvertimePayButton() {
@@ -60,7 +65,7 @@ function updateOvertimePayButton() {
 }
 
 overtimePayBtn.addEventListener('click', () => {
-  const { syokuteiPay, futsuPay, realPay, extra } = calcExpectedOvertimePay(currentTotals.minSyokutei, currentTotals.minFutsu);
+  const { syokuteiPay, futsuPay, shinyaPay, realPay, extra } = calcExpectedOvertimePay(currentTotals.minSyokutei, currentTotals.minFutsu, currentTotals.minShinya);
   const syokutei30 = Math.round(SYOKUTEI_RATE_PER_MIN * 30);
   const futsu30 = Math.round(FUTSU_RATE_PER_MIN * 30);
   // 1日あたりの参考額（18:00退勤基準、18:30〜21:00まで30分刻み）
@@ -73,9 +78,9 @@ overtimePayBtn.addEventListener('click', () => {
   }
   overtimePayResult.innerHTML = `
     <div class="amount">追加支給見込み: ¥${extra.toLocaleString()}</div>
-    <div>所定残業代 ¥${syokuteiPay.toLocaleString()} + 普通残業代 ¥${futsuPay.toLocaleString()} = 実額換算 ¥${realPay.toLocaleString()}</div>
+    <div>所定残業代 ¥${syokuteiPay.toLocaleString()} + 普通残業代 ¥${futsuPay.toLocaleString()}${currentTotals.minShinya > 0 ? ` + 深夜残業代 ¥${shinyaPay.toLocaleString()}` : ''} = 実額換算 ¥${realPay.toLocaleString()}</div>
     <div>実額換算 ¥${realPay.toLocaleString()} − みなし残業代 ¥${MINASHI_ZANGYO_AMOUNT.toLocaleString()}</div>
-    <div class="note">※ 所定残業33.6円/分・普通残業42円/分で概算。</div>
+    <div class="note">※ 所定残業33.6円/分・普通残業42円/分・深夜残業(22:00以降)50.4円/分で概算。</div>
     <div class="note">※ 30分あたり: 所定残業 ¥${syokutei30.toLocaleString()} / 普通残業 ¥${futsu30.toLocaleString()}</div>
     <div class="note">※ 参考（1日あたりの残業代）:</div>
     ${dailyRefs.join('')}
@@ -149,82 +154,6 @@ function hideStatus() {
 
 // ----- 日本の祝日 & 営業日数計算 -----
 
-function getVernalEquinoxDay(year) {
-  return Math.floor(20.8431 + 0.242194 * (year - 1980) - Math.floor((year - 1980) / 4));
-}
-function getAutumnalEquinoxDay(year) {
-  return Math.floor(23.2488 + 0.242194 * (year - 1980) - Math.floor((year - 1980) / 4));
-}
-
-function getNthMonday(year, month, n) {
-  let count = 0;
-  const daysInMonth = new Date(year, month, 0).getDate();
-  for (let d = 1; d <= daysInMonth; d++) {
-    if (new Date(year, month - 1, d).getDay() === 1) {
-      count++;
-      if (count === n) return d;
-    }
-  }
-  return 0;
-}
-
-function getJapaneseHolidaysInMonth(year, month) {
-  const holidays = new Set();
-  const daysInMonth = new Date(year, month, 0).getDate();
-
-  if (month === 1) {
-    holidays.add(1);
-    holidays.add(getNthMonday(year, 1, 2));
-  } else if (month === 2) {
-    holidays.add(11);
-    holidays.add(23);
-  } else if (month === 3) {
-    holidays.add(getVernalEquinoxDay(year));
-  } else if (month === 4) {
-    holidays.add(29);
-  } else if (month === 5) {
-    holidays.add(3);
-    holidays.add(4);
-    holidays.add(5);
-  } else if (month === 7) {
-    holidays.add(getNthMonday(year, 7, 3));
-  } else if (month === 8) {
-    holidays.add(11);
-  } else if (month === 9) {
-    holidays.add(getNthMonday(year, 9, 3));
-    holidays.add(getAutumnalEquinoxDay(year));
-  } else if (month === 10) {
-    holidays.add(getNthMonday(year, 10, 2));
-  } else if (month === 11) {
-    holidays.add(3);
-    holidays.add(23);
-  }
-
-  // 振替休日
-  const holidayList = Array.from(holidays).sort((a, b) => a - b);
-  for (const d of holidayList) {
-    const date = new Date(year, month - 1, d);
-    if (date.getDay() === 0) {
-      let sub = d + 1;
-      while (sub <= daysInMonth && (holidays.has(sub) || new Date(year, month - 1, sub).getDay() === 0)) {
-        sub++;
-      }
-      if (sub <= daysInMonth) holidays.add(sub);
-    }
-  }
-
-  // 国民の休日
-  for (let d = 2; d < daysInMonth; d++) {
-    if (!holidays.has(d) && holidays.has(d - 1) && holidays.has(d + 1)) {
-      const date = new Date(year, month - 1, d);
-      if (date.getDay() !== 0 && date.getDay() !== 6) {
-        holidays.add(d);
-      }
-    }
-  }
-
-  return holidays;
-}
 
 function calculateBusinessDays(year, month) {
   const daysInMonth = new Date(year, month, 0).getDate();
@@ -315,6 +244,56 @@ async function sendMessageSafely(tabId, message) {
   });
 }
 
+// ----- 在宅・休みのメタ情報（取得データとは別に保存し、再取得で消えないようにする） -----
+
+const LEAVE_TYPES = ['有給', 'AM半休', 'PM半休', '時間給', '夏休み', 'その他'];
+const LEAVE_CLASSES = {
+  '有給': 'leave-paid',
+  'AM半休': 'leave-am',
+  'PM半休': 'leave-pm',
+  '時間給': 'leave-hourly',
+  '夏休み': 'leave-summer',
+  'その他': 'leave-other',
+};
+
+const FULL_DAY_LEAVES = ['有給', '夏休み']; // 終日休み（残業は集計しない）
+
+let currentMeta = {}; // { [day]: { remote: boolean, leave: string } }
+
+function metaKey(year, month) {
+  return `attendanceMeta_${year}_${String(month).padStart(2, '0')}`;
+}
+
+async function loadMeta(year, month) {
+  const result = await chrome.storage.local.get(metaKey(year, month));
+  currentMeta = result[metaKey(year, month)] || {};
+}
+
+async function updateMeta(year, month, day, patch) {
+  const next = { ...(currentMeta[day] || {}), ...patch };
+  if (!next.remote && !next.leave) {
+    delete currentMeta[day];
+  } else {
+    currentMeta[day] = next;
+  }
+  await chrome.storage.local.set({ [metaKey(year, month)]: currentMeta });
+  scheduleSheetSync(year, month);
+}
+
+function renderMetaSummary() {
+  const counts = {};
+  let remoteDays = 0;
+  for (const m of Object.values(currentMeta)) {
+    if (m.remote) remoteDays++;
+    if (m.leave) counts[m.leave] = (counts[m.leave] || 0) + 1;
+  }
+  const parts = [`在宅 ${remoteDays}日`];
+  for (const type of LEAVE_TYPES) {
+    if (counts[type]) parts.push(`${type} ${counts[type]}日`);
+  }
+  metaSummary.textContent = parts.join(' / ');
+}
+
 // ----- テーブル描画 & サマリー計算 -----
 
 const DAY_NAMES = ['日', '月', '火', '水', '木', '金', '土'];
@@ -328,6 +307,7 @@ function renderTable(year, month, data) {
   let totalOtMinutes = 0;
   let totalSyokuteiMinutes = 0;
   let totalFutsuMinutes = 0;
+  let totalShinyaMinutes = 0;
   const holidays = getJapaneseHolidaysInMonth(year, month);
 
   for (const row of data) {
@@ -401,17 +381,20 @@ function renderTable(year, month, data) {
     // 残業時間セル (合計・所定・普通)
     const tdOt = document.createElement('td');
     tdOt.className = 'time-cell range-cell';
-    const ot = calculateOvertime(row.start, row.end);
+    const meta = currentMeta[row.day] || {};
+    const ot = FULL_DAY_LEAVES.includes(meta.leave) ? null : calculateOvertime(row.start, row.end);
 
     if (ot && ot.minTotal > 0) {
       totalOtMinutes += ot.minTotal;
       totalSyokuteiMinutes += ot.minSyokutei;
       totalFutsuMinutes += ot.minFutsu;
+      totalShinyaMinutes += ot.minShinya;
       const totalStr = formatMinutesToHHMM(ot.minTotal);
       const syokuteiStr = formatMinutesToHHMM(ot.minSyokutei);
       const futsuStr = formatMinutesToHHMM(ot.minFutsu);
 
-      const otText = `${totalStr} (所定${syokuteiStr}/普通${futsuStr})`;
+      const shinyaPart = ot.minShinya > 0 ? `/深夜${formatMinutesToHHMM(ot.minShinya)}` : '';
+      const otText = `${totalStr} (所定${syokuteiStr}/普通${futsuStr}${shinyaPart})`;
       tdOt.textContent = otText;
       tdOt.dataset.copyText = otText;
       tdOt.addEventListener('click', handleRangeCellClick);
@@ -421,6 +404,45 @@ function renderTable(year, month, data) {
     }
     tr.appendChild(tdOt);
 
+    // 在宅チェック
+    const tdRemote = document.createElement('td');
+    const remoteCheck = document.createElement('input');
+    remoteCheck.type = 'checkbox';
+    remoteCheck.className = 'remote-check';
+    remoteCheck.checked = !!meta.remote;
+    remoteCheck.addEventListener('change', async () => {
+      tr.classList.toggle('remote', remoteCheck.checked);
+      await updateMeta(year, month, row.day, { remote: remoteCheck.checked });
+      renderMetaSummary();
+    });
+    tdRemote.appendChild(remoteCheck);
+    tr.appendChild(tdRemote);
+    if (meta.remote) tr.classList.add('remote');
+
+    // 休み種別セレクト
+    const tdLeave = document.createElement('td');
+    const leaveSelect = document.createElement('select');
+    leaveSelect.className = 'leave-select';
+    const noneOpt = document.createElement('option');
+    noneOpt.value = '';
+    noneOpt.textContent = '-';
+    leaveSelect.appendChild(noneOpt);
+    for (const type of LEAVE_TYPES) {
+      const opt = document.createElement('option');
+      opt.value = type;
+      opt.textContent = type;
+      leaveSelect.appendChild(opt);
+    }
+    leaveSelect.value = meta.leave || '';
+    if (meta.leave) tr.classList.add(LEAVE_CLASSES[meta.leave]);
+    leaveSelect.addEventListener('change', async () => {
+      await updateMeta(year, month, row.day, { leave: leaveSelect.value });
+      // 終日休みの残業除外やサマリーに反映するため再描画
+      renderTable(year, month, currentRenderData);
+    });
+    tdLeave.appendChild(leaveSelect);
+    tr.appendChild(tdLeave);
+
     tableBody.appendChild(tr);
   }
 
@@ -429,14 +451,16 @@ function renderTable(year, month, data) {
   summaryWorkDays.textContent = `${actualWorkDays}日 / ${totalBusinessDays}日`;
   summarySyokuteiOt.textContent = formatMinutesToHHMM(totalSyokuteiMinutes);
   summaryFutsuOt.textContent = formatMinutesToHHMM(totalFutsuMinutes);
+  summaryShinyaOt.textContent = formatMinutesToHHMM(totalShinyaMinutes);
   summaryTotalOt.textContent = formatMinutesToHHMM(totalOtMinutes);
 
   const avgMinutes = actualWorkDays > 0 ? Math.round(totalOtMinutes / actualWorkDays) : 0;
   summaryAvgOt.textContent = `${formatMinutesToHHMM(avgMinutes)} / 日`;
 
-  currentTotals = { minSyokutei: totalSyokuteiMinutes, minFutsu: totalFutsuMinutes, minTotal: totalOtMinutes };
+  currentTotals = { minSyokutei: totalSyokuteiMinutes, minFutsu: totalFutsuMinutes, minShinya: totalShinyaMinutes, minTotal: totalOtMinutes };
   updateOvertimePayButton();
 
+  renderMetaSummary();
   summaryCard.classList.remove('hidden');
   tableWrapper.classList.remove('hidden');
 }
@@ -452,36 +476,30 @@ function formatMinutesToHHMM(totalMinutes) {
 /**
  * 09:30〜18:00 定時
  * 18:00〜18:30 所定残業 (最大30分)
- * 18:30以降 普通残業
+ * 18:30〜22:00 普通残業
+ * 22:00以降   深夜残業 (1.5倍)
  */
 function calculateOvertime(startHHMM, endHHMM) {
   if (!startHHMM || !endHHMM) return null;
 
   const endH = parseInt(endHHMM.slice(0, 2), 10);
   const endM = parseInt(endHHMM.slice(2, 4), 10);
-  const endMinutes = endH * 60 + endM;
+  let endMinutes = endH * 60 + endM;
+  if (endMinutes < 5 * 60) endMinutes += 24 * 60; // 0:00〜5:00は翌日扱い
 
   const base1800 = 18 * 60;      // 18:00 (1080分)
   const base1830 = 18 * 60 + 30; // 18:30 (1110分)
+  const base2200 = 22 * 60;      // 22:00 (1320分)
 
-  if (endMinutes <= base1800) {
-    return { minSyokutei: 0, minFutsu: 0, minTotal: 0 };
-  }
-
-  let minSyokutei = 0;
-  let minFutsu = 0;
-
-  if (endMinutes <= base1830) {
-    minSyokutei = endMinutes - base1800;
-  } else {
-    minSyokutei = 30;
-    minFutsu = endMinutes - base1830;
-  }
+  const minSyokutei = Math.max(0, Math.min(endMinutes, base1830) - base1800);
+  const minFutsu = Math.max(0, Math.min(endMinutes, base2200) - base1830);
+  const minShinya = Math.max(0, endMinutes - base2200);
 
   return {
     minSyokutei,
     minFutsu,
-    minTotal: minSyokutei + minFutsu,
+    minShinya,
+    minTotal: minSyokutei + minFutsu + minShinya,
   };
 }
 
@@ -639,6 +657,7 @@ function cacheKey(year, month) {
 
 async function saveCache(year, month, data) {
   await chrome.storage.local.set({ [cacheKey(year, month)]: { data, savedAt: Date.now() } });
+  scheduleSheetSync(year, month);
 }
 
 async function loadCache(year, month) {
@@ -652,6 +671,7 @@ async function onMonthChange() {
   const year  = parseInt(yearSelect.value, 10);
   const month = parseInt(monthSelect.value, 10);
   const cache = await loadCache(year, month);
+  await loadMeta(year, month);
   if (cache) {
     const saved = new Date(cache.savedAt).toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
     showStatus(`キャッシュ表示中（${saved} 取得）`, 'loading');
@@ -742,6 +762,7 @@ fetchBtn.addEventListener('click', async () => {
     const fetchedData = await fetchFromChatwork(year, month, myUserId, stopTs);
     const finalData = mergeAttendanceData(cache ? cache.data : null, fetchedData);
     await saveCache(year, month, finalData);
+    await loadMeta(year, month);
 
     hideStatus();
     renderTable(year, month, finalData);
@@ -767,6 +788,7 @@ forceFetchBtn.addEventListener('click', async () => {
   try {
     const data = await fetchFromChatwork(year, month, myUserId, null);
     await saveCache(year, month, data);
+    await loadMeta(year, month);
     hideStatus();
     renderTable(year, month, data);
   } catch (err) {
@@ -792,6 +814,14 @@ openTabBtn.addEventListener('click', async () => {
   }
 
   window.close();
+});
+
+// ----- 残業グラフを新規タブで開く -----
+
+document.getElementById('overtimeChartBtn').addEventListener('click', async () => {
+  const year  = parseInt(yearSelect.value, 10);
+  const month = parseInt(monthSelect.value, 10);
+  await chrome.tabs.create({ url: chrome.runtime.getURL(`chart.html?year=${year}&month=${month}`) });
 });
 
 // ----- 初期化 -----
